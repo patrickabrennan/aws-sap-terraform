@@ -1,0 +1,71 @@
+---
+
+instances_destroy:
+  stage: Destroy
+  resource_group: Destroy
+  needs: []  
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-ec2_instance
+    TF_ROOT: ${CI_PROJECT_DIR}/ec2_instance
+  script:
+    - cd "${TF_ROOT}"
+    - gitlab-terraform destroy -var-file=${ENVIRONMENT}.tfvars
+  when: manual
+
+iam_destroy:
+  stage: Destroy
+  resource_group: Destroy
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-iam
+    TF_ROOT: ${CI_PROJECT_DIR}/iam
+  script:
+    - cd "${TF_ROOT}"
+    - gitlab-terraform destroy -var-file=${ENVIRONMENT}.tfvars
+  needs:
+    - job: instances_destroy
+      artifacts: true
+  when: on_success
+
+security_group_destroy:
+  stage: Destroy
+  resource_group: Destroy
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-security_group
+    TF_ROOT: ${CI_PROJECT_DIR}/security_group
+  script:
+    - cd "${TF_ROOT}"
+    - gitlab-terraform destroy -var-file=${ENVIRONMENT}.tfvars
+  needs:
+    - job: iam_destroy
+      artifacts: true
+  when: on_success      
+
+
+efs_destroy:
+  stage: Destroy
+  resource_group: Destroy
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-efs
+    TF_ROOT: ${CI_PROJECT_DIR}/efs
+  script:
+    - cd "${TF_ROOT}"
+    - gitlab-terraform destroy -var-file=${ENVIRONMENT}.tfvars
+  needs:
+    - job: security_group_destroy
+      artifacts: true
+  when: on_success      
+
+
+kms_destroy:
+  stage: Destroy
+  resource_group: Destroy
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-kms
+    TF_ROOT: ${CI_PROJECT_DIR}/kms
+  script:
+    - cd "${TF_ROOT}"
+    - gitlab-terraform destroy -var-file=${ENVIRONMENT}.tfvars
+  needs:
+    - job: efs_destroy
+      artifacts: true
+  when: on_success      

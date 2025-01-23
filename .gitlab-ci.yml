@@ -1,0 +1,24 @@
+default:
+  image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+
+include:
+  - kms/gitlab/pipeline.yaml
+  - security_group/gitlab/pipeline.yaml
+  - efs/gitlab/pipeline.yaml
+  - iam/gitlab/pipeline.yaml
+  - ec2_instance/gitlab/pipeline.yaml
+  - destroy_all.yaml
+
+variables:
+  ENVIRONMENT: ${CI_COMMIT_BRANCH}
+  TF_CLI_ARGS_plan: "-var-file=${ENVIRONMENT}.tfvars"
+  AWS_CREDS_TARGET_ROLE: "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
+  AWS_DEFAULT_REGION: "us-east-1"
+
+stages:
+  - KMS
+  - SecurityGroups
+  - EFS
+  - IAM
+  - Instances
+  - Destroy  

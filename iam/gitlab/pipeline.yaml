@@ -1,0 +1,36 @@
+---
+
+iam_plan:
+  stage: IAM
+  needs: []
+  resource_group: iam
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-iam
+    TF_ROOT: iam
+  script:
+    - gitlab-terraform plan
+    - gitlab-terraform plan-json
+  environment:
+    name: ${ENVIRONMENT}-plan
+  artifacts:
+    name: plan
+    paths:
+      - iam/plan.cache
+    reports:
+      terraform: iam/plan.json
+  when: manual
+
+iam_apply:
+  stage: IAM
+  resource_group: iam
+  variables:
+    TF_STATE_NAME: ${ENVIRONMENT}-iam
+    TF_ROOT: ${CI_PROJECT_DIR}/iam
+  environment:
+    name: ${ENVIRONMENT}-apply
+  script:
+    - gitlab-terraform apply
+  needs:
+    - job: iam_plan
+      artifacts: true
+  when: manual
