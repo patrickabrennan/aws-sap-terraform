@@ -4,11 +4,11 @@ Configuration of EFS resources to be created for SAP on AWS workloads.
 
 Resource types created with this configuration:
 
-* [EFS File System](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_file_system){:target="_blank"}
-* [EFS Access Point](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_access_point){:target="_blank"}
-* [EFS Mount Target](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_mount_target){:target="_blank"}
-* [Security Group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group.html){:target="_blank"}
-* [Security Group Rule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule){:target="_blank"}
+* [EFS File System](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_file_system)
+* [EFS Access Point](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_access_point)
+* [EFS Mount Target](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_mount_target)
+* [Security Group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group.html)
+* [Security Group Rule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule)
 
 ## Usage
 

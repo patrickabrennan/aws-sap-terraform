@@ -4,10 +4,10 @@ Configuration of EC2 resources to be created for SAP on AWS workloads.
 
 Resource types created with this configuration:
 
-* [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance){:target="_blank"}
-* [EBS Volumes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume){:target="_blank"}
-* [Elastic Network Interface](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_interface){:target="_blank"}
-* [DNS Record](https://www.terraform.io/docs/providers/aws/r/route53_record.html){:target="_blank"}
+* [EC2 instances](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance)
+* [EBS Volumes](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume)
+* [Elastic Network Interface](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_interface)
+* [DNS Record](https://www.terraform.io/docs/providers/aws/r/route53_record.html)
 
 ## Usage
 
@@ -17,7 +17,7 @@ Specify the list of EC2 instances to be created in the corresponding ENV.tfvars 
 
 ### Example 1 - creation of 2 instances (one application server, one hana database) leveraging standard storage configuration.  
 
-You only need to specify the EC2 instance type and storage type you want to use with your HANA database. The module will dynamically identify the required EBS storage resources to be created, as per [Storage Configuration for SAP HANA](https://docs.aws.amazon.com/sap/latest/sap-hana/hana-ops-storage-config.html){:target="_blank"}.
+You only need to specify the EC2 instance type and storage type you want to use with your HANA database. The module will dynamically identify the required EBS storage resources to be created, as per [Storage Configuration for SAP HANA](https://docs.aws.amazon.com/sap/latest/sap-hana/hana-ops-storage-config.html).
 
 ```hcl
 environment = "dev"
@@ -155,7 +155,7 @@ instances_to_create = {
 |hana_logs_storage_type|EBS storage type to be used for HANA log volumes|gp3|Yes
 |hana_shared_storage_type|EBS storage type to be used for HANA shared volumes|gp3|Yes
 |hana_backup_storage_type|EBS storage type to be used for HANA backup volume|st1|Yes
-|private_ip|IP of SAP EC2 instance|10.237.40.144|No (if not specified, an IP will be dynamically assigned) **Pending modification / support to multiple IPs**
+|private_ip|IP of SAP EC2 instance|10.237.40.144|No (if not specified, an IP will be dynamically assigned)
 |domain|Domain EC2 instance needs to be configured with |mycorp.com|Yes
 |application_code|Identifies the type of EC2 instance (use "hana" for SAP HANA, use "nw" for SAP NetWeaver Application Servers.|hana|Yes
 |application_SID|SAP system SID |D01|Yes
