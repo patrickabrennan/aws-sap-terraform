@@ -4,12 +4,12 @@ Configuration of KMS resources to be created for SAP on AWS workloads.
 
 Resource types created with this configuration:
 
-* [Security Group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group.html){:target="_blank"}
-* [Security Group Rule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule){:target="_blank"}
+* [Security Group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group.html)
+* [Security Group Rule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule)
 
 ## Usage
 
-Specify the list of Security Groups to be created in the corresponding ENV.tfvars file (refer to [Branching strategy](../README.md)). Also, you can use the field "efs_to_allow" to reference the security groups automatically created by the [EFS](4_EFS.md) module.
+Specify the list of Security Groups to be created in the corresponding ENV.tfvars file (refer to [Branching strategy](../README.md)). Also, you can use the field "efs_to_allow" to reference the security groups automatically created by the [EFS](../efs/README.md) module.
 
 ## Examples
 

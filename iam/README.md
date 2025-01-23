@@ -4,8 +4,8 @@ Configuration of IAM resources to be created for SAP on AWS workloads.
 
 Resource types created with this configuration:
 
-* [IAM Roles](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role){:target="_blank"}
-* [IAM Policies](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy){:target="_blank"}
+* [IAM Roles](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role)
+* [IAM Policies](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy)
 
 ## Usage: IAM Policies
 

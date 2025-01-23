@@ -4,9 +4,9 @@ Configuration of KMS resources to be created for SAP on AWS workloads.
 
 Resource types created with this configuration:
 
-* [KMS Keys](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key){:target="_blank"}
-* [KMS Key Alias](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias){:target="_blank"}
-* [KMS Key Policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key_policy){:target="_blank"}
+* [KMS Keys](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key)
+* [KMS Key Alias](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias)
+* [KMS Key Policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key_policy)
 
 ## Usage
 
@@ -34,7 +34,7 @@ keys_to_create = {
 
 Under ```keys_to_create``` you declare all the keys to be created. We recommend using the target service name as the key for the value (examples above are ebs, efs, cloudwatch and s3). That key name will be used to create the key alias. You can customize the key alias name by passing the variable "alias_name" in the configuration.
 
-This example assumes you are using the pattern of having one KMS key per service that stores [data at rest](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/protecting-data-at-rest.html){:target="_blank"}. If you are not following this pattern, feel free to give different values for your key names.
+This example assumes you are using the pattern of having one KMS key per service that stores [data at rest](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/protecting-data-at-rest.html). If you are not following this pattern, feel free to give different values for your key names.
 
 ## Input variables
 
