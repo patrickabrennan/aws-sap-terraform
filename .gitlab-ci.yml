@@ -9,16 +9,54 @@ include:
   - ec2_instance/gitlab/pipeline.yaml
   - destroy_all.yaml
 
+
 variables:
+
+  # #########################################################################
+  # Replace branch names, account numbers, regions, and role name accordingly
+
+  DEV_BRANCH: "dev"
+  DEV_ACCT: "928832523206"
+  DEV_REG: "us-east-1"
+
+  QA_BRANCH: "qa"
+  QA_ACCT: "222222222222"
+  QA_REG: "us-east-1"
+
+  PRD_BRANCH: "main"
+  PRD_ACCT: "333333333333"
+  PRD_REG: "us-east-2"
+
+  ROLE_NAME: "GitlabRunner"
+
+  # #########################################################################
+
   ENVIRONMENT: ${CI_COMMIT_BRANCH}
   TF_CLI_ARGS_plan: "-var-file=${ENVIRONMENT}.tfvars"
-  AWS_CREDS_TARGET_ROLE: "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
-  AWS_DEFAULT_REGION: "us-east-1"
+
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $DEV_BRANCH
+      variables:                              
+        AWS_CREDS_TARGET_ROLE: "arn:aws:iam::${DEV_ACCT}:role/${ROLE_NAME}"
+        AWS_DEFAULT_REGION: "${DEV_REG}"
+    - if: $CI_COMMIT_BRANCH == $QA_BRANCH
+      variables:                              
+        AWS_CREDS_TARGET_ROLE: "arn:aws:iam::${QA_ACCT}:role/${ROLE_NAME}"
+        AWS_DEFAULT_REGION: "${QA_REG}"
+    - if: $CI_COMMIT_BRANCH == $PRD_BRANCH
+      variables:                              
+        AWS_CREDS_TARGET_ROLE: "arn:aws:iam::${PRD_ACCT}:role/${ROLE_NAME}"
+        AWS_DEFAULT_REGION: "${PRD_REG}"
+
 
 stages:
   - KMS
-  - SecurityGroups
   - EFS
+  - SecurityGroups
   - IAM
   - Instances
   - Destroy  
+
+
