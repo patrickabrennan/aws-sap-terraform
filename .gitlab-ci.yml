@@ -16,7 +16,7 @@ variables:
   # Replace branch names, account numbers, regions, and role name accordingly
 
   DEV_BRANCH: "dev"
-  DEV_ACCT: "928832523206"
+  DEV_ACCT: "111111111111"
   DEV_REG: "us-east-1"
 
   QA_BRANCH: "qa"
