@@ -2,6 +2,8 @@
 
 Welcome! Here you will find the required Terraform resources required to deploy a base SAP environment, comprised of KMS keys, EFS, Security Groups, IAM and EC2 Instances.
 
+Find the full guidance on how to use this code on [the official blog post](https://aws.amazon.com/blogs/awsforsap/terraform-your-sap-infrastructure-on-aws-2/)
+
 ## Getting started
 
 1. Fork this repository [aws-sap-terraform](https://github.com/aws-samples/aws-sap-terraform) into your own account. [How to fork?](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
