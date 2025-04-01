@@ -5,8 +5,8 @@ module "iam_policies" {
   aws_region  = var.aws_region
   environment = var.environment
 
-  name       = each.value["name"]
-  statements = each.value["statements"]
+  name       = each.value[0]["name"]
+  statements = each.value[0]["statements"]
 
   tags = local.tags
 }

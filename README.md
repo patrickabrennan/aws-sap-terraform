@@ -20,7 +20,7 @@ Find the full guidance on how to use this code on [the official blog post](https
 
 Below you'll find straight forward instructions to deploy the code using a GitLab pipeline. If you are using some other CI/CD tool like Jenkins or GitHub Actions, go ahead and create your deployments files to replace the existing .gitlab-ci.yml and efs/gitlab/pipeline.yaml, iam/gitlab/pipeline.yaml and etc.
 
-A GitLab CI/CD pipeline [.gitlab-ci.yml](https://github.com/aws-samples/aws-sap-terraform/blob/main/.gitlab-ci.yml) is configured with the following stages and corresponding job definitions. Once you push your updated code according to step 4 above, a new pipeline execution will be created, and once you open it, you'll see the screen below:
+If you decide to use the GitLab CI/CD pipeline, update [.gitlab-ci.yml](https://github.com/aws-samples/aws-sap-terraform/blob/main/.gitlab-ci.yml) with the corresponding values for your branch names, AWS account numbers, AWS regions, and AWS IAM role. The file is configured with the following stages and corresponding job definitions. Once you push your updated code according to step 4 above, a new pipeline execution will be created, and once you open it, you'll see the screen below:
 
 ![Pipeline overview](images/pipeline-overview.png)
 

@@ -93,17 +93,32 @@ iam_roles = {
 ```
 
 Under ```iam_roles``` you declare all the roles to be created. Check the detailed description for each key pair value in the sections below.
+</br></br>
 
 ## Input variables
 
-Work in progress.
+| Name | Description | Example | Required |
+|------|-------------|--------|--------|
+|environment|Environment name|dev|Yes
+|aws_region|Region where resources are being deployed|us-east-1|Yes
+|iam_roles|Map of roles to be created|Key-value map. In the example above, keys "role1" and role2" are used to define the attributes of the 2 roles. See below for details on these attributes|Yes
+|iam_policies|Map of policies to be created|Key-value map. In the example above, key "ec2_permissions" is used to define the attributes of the an IAM policy. See below for details on these attributes|Yes
+
 
 ### ```iam_policies``` variable details
 
-Work in progress.
+| Name | Description | Example | Required |
+|------|-------------|--------|--------|
+|name|Name of the IAM policy|iam-policy-sap-ec2-others|Yes
+|statements|A key-value map with the IAM policy statements|Refer "stmt1" in the policy sample provided above |Yes
 
 ### ```iam_roles``` variable details
 
-Work in progress.
+| Name | Description | Example | Required |
+|------|-------------|--------|--------|
+|name|Name of the IAM role|iam-role-sap-ec2|Yes
+|policies|List of IAM policies to be assigned to the IAM role |["iam-policy-sap-data-provider","iam-policy-sap-efs","iam-policy-sap-ec2-others"]|No
+|managed_policies|List of AWS-managed policies to be assigned to the IAM role |["AmazonSSMManagedInstanceCore"]|No
+|permissions_boundary_arn|Arn of IAM policy to be attached as IAM role's permission boundary |["AmazonSSMManagedInstanceCore"]|No
 
 
