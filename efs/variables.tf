@@ -18,6 +18,9 @@ variable "efs_to_create" {
   type = map(any)
 }
 
+variable "keys_to_create" {
+  type = map(any)
+}
 
 #variable "efs_to_create" {
 #  description = "KMS keys to create"
