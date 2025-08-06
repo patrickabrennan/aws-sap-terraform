@@ -9,7 +9,12 @@ variable "environment" {
 }
 
 variable "keys_to_create" {
-  description = "Keys to create"
-  type        = any
-  default     = kms
+  type    = map(any)
+  default = { kms = {} }
 }
+
+#variable "keys_to_create" {
+#  description = "Keys to create"
+#  type        = any
+#  default     = kms
+#}
