@@ -13,10 +13,10 @@ variable "sap_discovery_tag" {
   type        = string
 }
 
-#variable "efs_to_create" {
-#  description = "KMS keys to create"
-#  type        = any
-#}
+variable "efs_to_create" {
+  description = "KMS keys to create"
+  type        = any
+}
 
 #variable "efs_to_create" {
 #  type    = map(any)
