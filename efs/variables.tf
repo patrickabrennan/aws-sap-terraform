@@ -14,10 +14,19 @@ variable "sap_discovery_tag" {
   type        = string
 }
 
-variable "efs_to_create" {
-  description = "KMS keys to create"
-  type        = any
+keys_to_create = {
+  efs = {
+    alias_name = "kms-alias-efs"
+    enable_key_rotation = true
+  }
 }
+
+
+
+#variable "efs_to_create" {
+#  description = "KMS keys to create"
+#  type        = any
+#}
 
 #variable "efs_to_create" {
 #  type    = map(any)
