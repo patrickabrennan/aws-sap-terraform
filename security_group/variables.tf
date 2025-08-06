@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "Region where to run this TF in"
   type        = string
-  default     = "us-east-1
+  default     = "us-east-1"
 }
 
 variable "environment" {
