@@ -9,8 +9,10 @@ module "app_security_groups" {
 
   name         = each.key
   description  = each.value["description"]
-  rules        = each.value["rules"]
-  efs_to_allow = each.value["efs_to_allow"]
+  rules        = each.value.rules
+  #rules        = each.value["rules"]
+  efs_to_allow = each.value.efs_to_allow
+  #efs_to_allow = each.value["efs_to_allow"]
 
   tags = local.tags
 }
@@ -40,4 +42,5 @@ module "additional_rules_for_efs" {
   sgs_to_allow = each.value.efs_to_allow
   sg_source    = each.value.sg_id
 }
+
 
