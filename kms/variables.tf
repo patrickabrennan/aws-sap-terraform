@@ -9,13 +9,9 @@ variable "environment" {
   default     = "dev"
 }
 
-keys_to_create = {
-  efs = {
-    alias_name = "kms-alias-efs"
-    enable_key_rotation = true
-  }
+variable "keys_to_create" {
+  type = map(any)
 }
-
 
 #variable "keys_to_create" {
 #  description = "Keys to create"
