@@ -11,4 +11,5 @@ variable "environment" {
 variable "keys_to_create" {
   description = "Keys to create"
   type        = any
+  default     = kms
 }
