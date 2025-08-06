@@ -16,7 +16,7 @@ variable "sap_discovery_tag" {
 
 variable "keys_to_create" {
   type = map(any)
-
+}
 
 
 #variable "efs_to_create" {
