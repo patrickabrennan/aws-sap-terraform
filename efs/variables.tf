@@ -18,7 +18,7 @@ variable "sap_discovery_tag" {
 #  type        = any
 #}
 
-variable "efs_to_create" {
-  type    = map(any)
-  default = { efs = {} }
-}
+#variable "efs_to_create" {
+#  type    = map(any)
+#  default = { efs = {} }
+#}
