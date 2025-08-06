@@ -5,9 +5,8 @@ vpc_id            = "vpc-0070f81843ca12d0a"
 
 app_sg_list = {
   app1 = {
-    description  = "App SG"
-    efs_to_allow = ["dev_D01-sapmnt", "dev_D01-trans", "dev_D02-sapmnt", "dev_D02-trans"]
-    rules = [
+    description   = "App SG"
+    ingress_rules = [
       {
         from_port   = 4237
         to_port     = 4237
@@ -43,6 +42,18 @@ app_sg_list = {
         to_port     = 3399
         protocol    = "tcp"
         cidr_blocks = ["10.0.0.0/16"]
+      },
+      {
+        from_port  = 0
+        to_port    = 0
+        protocol   = "all"
+        source_sgs = ["self"]
+      },
+      {
+        from_port  = 1
+        to_port    = 65535
+        protocol   = "tcp"
+        source_sgs = ["self"]
       }
     ]
   }
@@ -50,32 +61,31 @@ app_sg_list = {
 
 db_sg_list = {
   db1 = {
-    description  = "DB SG"
-    efs_to_allow = ["dev_D01-sapmnt", "dev_D01-trans", "dev_D02-sapmnt", "dev_D02-trans"]
-    rules = [
+    description   = "DB SG"
+    ingress_rules = [
       {
-        from_port   = 1
-        to_port     = 65535
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
+        from_port  = 1
+        to_port    = 65535
+        protocol   = "tcp"
+        source_sgs = ["app1"]
       },
       {
-        from_port   = 111
-        to_port     = 111
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
+        from_port  = 111
+        to_port    = 111
+        protocol   = "tcp"
+        source_sgs = ["app1"]
       },
       {
-        from_port   = 2049
-        to_port     = 2049
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
+        from_port  = 2049
+        to_port    = 2049
+        protocol   = "tcp"
+        source_sgs = ["app1"]
       },
       {
-        from_port   = 4000
-        to_port     = 4002
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
+        from_port  = 4000
+        to_port    = 4002
+        protocol   = "tcp"
+        source_sgs = ["app1"]
       },
       {
         from_port   = 1128
@@ -100,58 +110,11 @@ db_sg_list = {
         to_port     = 39915
         protocol    = "tcp"
         cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 30017
-        to_port     = 39917
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 30041
-        to_port     = 39941
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 30044
-        to_port     = 39944
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 4237
-        to_port     = 4237
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 4300
-        to_port     = 4399
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 50013
-        to_port     = 59914
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 8000
-        to_port     = 8099
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
-      },
-      {
-        from_port   = 8443
-        to_port     = 8443
-        protocol    = "tcp"
-        cidr_blocks = ["10.0.0.0/16"]
       }
     ]
   }
 }
+
 
 
 /*
