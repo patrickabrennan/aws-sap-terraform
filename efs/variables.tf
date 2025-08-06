@@ -6,6 +6,7 @@ variable "aws_region" {
 variable "environment" {
   description = "Environment to be used for this run"
   type        = string
+  default     = "dev"
 }
 
 variable "sap_discovery_tag" {
