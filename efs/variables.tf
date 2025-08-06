@@ -19,7 +19,6 @@ variable "sap_discovery_tag" {
 #}
 
 variable "efs_to_create" {
-  type    = HCL
+  type    = map(any)
   default = { efs = {} }
 }
-
