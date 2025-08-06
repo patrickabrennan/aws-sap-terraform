@@ -13,7 +13,13 @@ variable "sap_discovery_tag" {
   type        = string
 }
 
+#variable "efs_to_create" {
+#  description = "KMS keys to create"
+#  type        = any
+#}
+
 variable "efs_to_create" {
-  description = "KMS keys to create"
-  type        = any
+  type    = map(any)
+  default = { efs = {} }
 }
+
