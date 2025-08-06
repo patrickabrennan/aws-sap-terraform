@@ -1,6 +1,8 @@
 environment       = "dev"
 aws_region        = "us-east-1"
 sap_discovery_tag = "sap_relevant"
+vpc_id = "vpc-0070f81843ca12d0a"
+
 
 app_sg_list = {
   app1 = {
