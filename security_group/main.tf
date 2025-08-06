@@ -4,7 +4,8 @@ module "app_security_groups" {
 
   environment = var.environment
   aws_region  = var.aws_region
-  vpc_id      = data.aws_vpc.selected.id
+  #vpc_id      = data.aws_vpc.selected.id
+  vpc_id = var.vpc_id
 
   name         = each.key
   description  = each.value["description"]
@@ -39,3 +40,4 @@ module "additional_rules_for_efs" {
   sgs_to_allow = each.value.efs_to_allow
   sg_source    = each.value.sg_id
 }
+
