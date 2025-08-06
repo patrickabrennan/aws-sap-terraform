@@ -6,7 +6,7 @@ variable "aws_region" {
 variable "environment" {
   description = "Environment to be used for this run"
   type        = string
-  default     = dev
+  default     = "dev"
 }
 
 variable "keys_to_create" {
