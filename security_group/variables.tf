@@ -22,3 +22,9 @@ variable "app_sg_list" {
   description = "App SG List"
   type        = any
 }
+
+#added variables:
+variable "vpc_id" {
+  description = "VPC ID for the selected environment"
+  type        = string
+}
