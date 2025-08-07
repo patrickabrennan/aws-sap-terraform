@@ -4,16 +4,30 @@ aws_region  = "us-east-1"
 iam_roles = {
   role1 = {
     name = "iam-role-sap-ec2"
-    assume_role_policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }]
-    })
+    #assume_role_policy = jsonencode({
+    #  Version = "2012-10-17"
+    #  Statement = [{
+    #    Effect = "Allow"
+    #    Principal = {
+    #      Service = "ec2.amazonaws.com"
+    #    }
+    #    Action = "sts:AssumeRole"
+    #  }]
+    #})
+    assume_role_policy = <<EOF
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "ec2.amazonaws.com"
+         },
+         "Action": "sts:AssumeRole"
+         }
+       ]
+      }
+      EOF
     policies = [
       "iam-policy-sap-data-provider",
       "iam-policy-sap-efs",
