@@ -25,7 +25,9 @@ module "iam_roles" {
   
   policies                 = each.value["policies"]
   managed_policies         = each.value["managed_policies"]
-  permissions_boundary_arn = each.value["permissions_boundary_arn"]
+  #comment out and replace with line below:
+  #permissions_boundary_arn = each.value["permissions_boundary_arn"]
+  permissions_boundary_arn = lookup(each.value, "permissions_boundary_arn", null)
 
   tags = local.tags
 
