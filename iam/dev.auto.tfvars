@@ -4,16 +4,18 @@ aws_region  = "us-east-1"
 iam_roles = {
   role1 = {
     name = "iam-role-sap-ec2"
-    assume_role_policy = <<EOF
+        assume_role_policy = <<EOF
     {
-      Version = "2012-10-17"
-      Statement = [{
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "ec2.amazonaws.com"
+          },
+          "Action": "sts:AssumeRole"
         }
-        Action = "sts:AssumeRole"
-      }]
+      ]
     }
     EOF
     policies = [
@@ -30,14 +32,16 @@ iam_roles = {
     name = "iam-role-sap-ec2-ha"
     assume_role_policy = <<EOF
     {
-      Version = "2012-10-17"
-      Statement = [{
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "ec2.amazonaws.com"
+          },
+          "Action": "sts:AssumeRole"
         }
-        Action = "sts:AssumeRole"
-      }]
+      ]
     }
     EOF
     policies = [
