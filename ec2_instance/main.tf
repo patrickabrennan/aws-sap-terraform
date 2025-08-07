@@ -1,3 +1,20 @@
+#added info for SSM 
+resource "aws_kms_key" "ebs" {
+  description         = "KMS key for EBS encryption"
+  enable_key_rotation = true
+}
+
+resource "aws_ssm_parameter" "ebs_kms_arn" {
+  name        = "/dev/kms/ebs/arn"
+  type        = "String"
+  value       = aws_kms_key.ebs.arn
+  description = "KMS ARN used for EBS encryption"
+}
+
+
+
+
+
 module "ec2" {
   source   = "./modules/ec2"
   for_each = var.instances_to_create
