@@ -1,7 +1,3 @@
-#added to get creds
-data "aws_caller_identity" "current" {}
-#end add 
-
 resource "aws_iam_role" "iam_role" {
   name                 = var.name
   assume_role_policy   = data.aws_iam_policy_document.iam_instance_trust.json
@@ -23,4 +19,5 @@ resource "aws_iam_role_policy_attachment" "managed_policy_attchment" {
   role       = aws_iam_role.iam_role.name
   policy_arn = "arn:aws:iam::aws:policy/${each.value}"
 }
+
 
