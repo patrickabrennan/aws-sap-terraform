@@ -10,7 +10,10 @@ resource "aws_iam_role" "iam_role" {
   name               = var.role_name
   assume_role_policy = var.assume_role_policy
 
-  permissions_boundary = try(local.permissions_boundary_arn, null)
+#commnent out the lines below:
+  #permissions_boundary = try(local.permissions_boundary_arn, null)
+#Replace line above with the line below:
+  permissions_boundary = try(var.permissions_boundary_arn, null)
 
   tags = var.tags
 }
@@ -31,6 +34,7 @@ resource "aws_iam_role_policy_attachment" "managed_policy_attchment" {
   role       = aws_iam_role.iam_role.name
   policy_arn = "arn:aws:iam::aws:policy/${each.value}"
 }
+
 
 
 
