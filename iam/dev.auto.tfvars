@@ -4,7 +4,7 @@ aws_region  = "us-east-1"
 iam_roles = {
   role1 = {
     name = "iam-role-sap-ec2"
-        assume_role_policy = <<EOF
+    assume_role_policy = <<EOF
     {
       "Version": "2012-10-17",
       "Statement": [
