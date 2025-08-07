@@ -24,13 +24,13 @@ instances_to_create = {
     }
 
     sapd01cs = {
-        #"private_ip"       = "10.0.0.145"
+        #"private_ip"       = "10.0.16.145"
         "domain"           = "pabrennan.com"        
         "application_code" = "nw"
         "application_SID"  = "D01"
         "ha"               = false            
         "ami_ID"           = "ami-12345678901234567"
-        "subnet_ID"        = "subnet-02057fe2ecbbe5eeb"
+        "subnet_ID"        = "subnet-01c398cc6657832c1"
         "key_name"         = "testing"
         "monitoring"        = false        
         "root_ebs_size"    = 50
