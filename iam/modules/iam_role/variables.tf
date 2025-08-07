@@ -50,8 +50,9 @@ variable "attach_permissions_boundary" {
   default     = false
 }
 
-variable "tags" {
-  description = "Tags to apply to the IAM role"
-  type        = map(string)
-  default     = {}
-}
+#variable "tags" {
+#  description = "Tags to apply to the IAM role"
+#  type        = map(string)
+#  default     = {}
+#}
+
