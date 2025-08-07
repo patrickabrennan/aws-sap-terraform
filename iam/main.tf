@@ -19,6 +19,10 @@ module "iam_roles" {
   environment = var.environment
 
   name                     = each.value["name"]
+# added the following two lines:
+  role_name                = each.value["name"]  # NEW
+  assume_role_policy       = each.value["assume_role_policy"]  # NEW
+  
   policies                 = each.value["policies"]
   managed_policies         = each.value["managed_policies"]
   permissions_boundary_arn = each.value["permissions_boundary_arn"]
