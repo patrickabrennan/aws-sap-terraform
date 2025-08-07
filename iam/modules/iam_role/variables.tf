@@ -32,3 +32,26 @@ variable "permissions_boundary_arn" {
   description = "permissions boundary to attach"
   type        = string
 }
+
+#added the following:
+variable "role_name" {
+  description = "The name of the IAM role to create"
+  type        = string
+}
+
+variable "assume_role_policy" {
+  description = "The assume role policy document"
+  type        = string
+}
+
+variable "attach_permissions_boundary" {
+  description = "Whether to attach the permissions boundary"
+  type        = bool
+  default     = false
+}
+
+variable "tags" {
+  description = "Tags to apply to the IAM role"
+  type        = map(string)
+  default     = {}
+}
