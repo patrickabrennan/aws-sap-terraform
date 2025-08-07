@@ -9,6 +9,7 @@ resource "aws_ssm_parameter" "ebs_kms_arn" {
   type        = "String"
   value       = aws_kms_key.ebs.arn
   description = "KMS ARN used for EBS encryption"
+  overwrite   = true
 }
 
 
