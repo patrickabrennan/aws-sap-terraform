@@ -3,19 +3,19 @@ aws_region  = "us-east-1"
 
 instances_to_create = {
   sapd01db1 = {
-    "private_ip"       = "172.31.16.50"
-    "domain"           = "mylab.com"
+    #"private_ip"       = "172.31.16.50"
+    "domain"           = "pabrennan.com"
     "application_code" = "hana"
     "application_SID"  = "D01"
     "ha"               = true
-    "ami_ID"           = "ami-00000000000000000"
-    "subnet_ID"        = "subnet-00000000000000000"
-    "key_name"         = "key-name"
-    "monitoring"       = true
+    "ami_ID"           = "ami-01ee0f5d6dfe22e54"
+    #"subnet_ID"        = "subnet-00000000000000000"
+    "key_name"         = "kms-alias-ebs"
+    "monitoring"       = false #true
     "root_ebs_size"    = 80
-    "ec2_tags" = {
-      "tag_key_1" = "tag_value_1"
-    }
+    #"ec2_tags" = {
+      #"tag_key_1" = "tag_value_1"
+    #}
     "instance_type"            = "x2iedn.xlarge"
     "hana_data_storage_type"   = "gp3"
     "hana_logs_storage_type"   = "gp3"
@@ -24,8 +24,8 @@ instances_to_create = {
   }
 
   sapd01cs = {
-    "private_ip"       = "172.31.0.50"
-    "domain"           = "mylab.com"
+    #"private_ip"       = "172.31.0.50"
+    "domain"           = "pabrennan.com"
     "application_code" = "nw"
     "application_SID"  = "D01"
     "ha"               = false
@@ -40,6 +40,7 @@ instances_to_create = {
     "instance_type" = "c5.2xlarge"
   }
 
+/*
   sapd02db1 = {
     "private_ip"       = "172.31.16.51"
     "domain"           = "mylab.com"
@@ -111,3 +112,4 @@ instances_to_create = {
     ]
   }
 }
+*/
