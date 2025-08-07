@@ -26,7 +26,8 @@ iam_roles = {
     managed_policies = [
       "AmazonSSMManagedInstanceCore"
     ]
-    permissions_boundary_arn = "arn:aws:iam::285942769742:policy/example-permissions-boundary-rds"
+    #commnet out this line 
+    #permissions_boundary_arn = "arn:aws:iam::285942769742:policy/example-permissions-boundary-rds"
   },
   role2 = {
     name = "iam-role-sap-ec2-ha"
