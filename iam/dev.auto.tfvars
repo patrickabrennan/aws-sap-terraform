@@ -1,6 +1,3 @@
-environment = "dev"
-aws_region  = "us-east-1"
-
 iam_roles = {
   role1 = {
     name = "iam-role-sap-ec2"
