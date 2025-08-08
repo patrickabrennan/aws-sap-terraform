@@ -8,5 +8,4 @@ keys_to_create = {
   "efs"        = {}
   "cloudwatch" = {}
   "s3"         = {}
-  "/dev/kms/ebs/arn" = {}
 }
