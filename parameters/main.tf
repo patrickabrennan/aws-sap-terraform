@@ -3,7 +3,7 @@ resource "aws_ssm_parameter" "parameters" {
 
   name  = "/${var.environment}/${each.key}"
   #type  = "SecureString"
-  type = String
+  type = "String"
   value = each.value["value"]
   #added the line below:
   overwrite = true
