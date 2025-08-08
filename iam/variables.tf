@@ -17,3 +17,15 @@ variable "iam_policies" {
   description = "IAM policies to create"
   type        = any
 }
+
+variable "vpc_id" {
+  description = "VPC ID for resources"
+  type        = string
+  default     = null
+}
+
+variable "sap_discovery_tag" {
+  description = "SAP discovery tag"
+  type        = string
+  default     = null
+}
