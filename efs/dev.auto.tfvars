@@ -1,7 +1,3 @@
-environment       = "dev"
-aws_region        = "us-east-1"
-sap_discovery_tag = "sap_relevant"
-
 efs_to_create = {
   "D01-sapmnt" = {
     access_point_info = {
