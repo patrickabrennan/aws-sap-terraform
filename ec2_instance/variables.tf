@@ -12,3 +12,15 @@ variable "instances_to_create" {
   description = "Data for instances to create"
   type        = any
 }
+
+variable "vpc_id" {
+  description = "VPC ID for resources"
+  type        = string
+  default     = null
+}
+
+variable "sap_discovery_tag" {
+  description = "SAP discovery tag"
+  type        = string
+  default     = null
+}
