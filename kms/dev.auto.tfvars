@@ -2,10 +2,10 @@ environment = "dev"
 aws_region  = "us-east-1"
 
 keys_to_create = {
-  "ebs" = {
+  ebs = {
     alias_name = "kms-alias-ebs"
   }
-  "efs"        = {}
-  "cloudwatch" = {}
-  "s3"         = {}
+  efs        = {}
+  cloudwatch = {}
+  s3         = {}
 }
