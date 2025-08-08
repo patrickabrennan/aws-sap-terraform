@@ -1,6 +1,3 @@
-environment = "dev"
-aws_region = "us-east-1"
-
 instances_to_create = {
     sapd01db1 = {
         "private_ip"        = "10.0.16.144"
