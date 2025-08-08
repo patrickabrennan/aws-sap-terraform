@@ -9,12 +9,17 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "sap_discovery_tag" {
+  description = "Tag key that identifies sap relevant objects"
+  type        = string
+}
+
+variable "vpc_id" {
+  description = "VPC ID for resources"
+  type        = string
+  default     = null
+}
+
 variable "keys_to_create" {
   type = map(any)
 }
-
-#variable "keys_to_create" {
-#  description = "Keys to create"
-#  type        = any
-#  default     = kms
-#}
