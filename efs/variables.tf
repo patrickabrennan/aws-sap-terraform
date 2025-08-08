@@ -14,6 +14,12 @@ variable "sap_discovery_tag" {
   type        = string
 }
 
+variable "vpc_id" {
+  description = "VPC ID for resources"
+  type        = string
+  default     = null
+}
+
 variable "efs_to_create" {
   type = map(any)
 }
