@@ -51,3 +51,7 @@ locals {
   )
 }
 
+# After computing local.subnet_id_effective
+data "aws_subnet" "effective" {
+  id = local.subnet_id_effective
+}
