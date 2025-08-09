@@ -2,7 +2,7 @@ resource "aws_ebs_volume" "all_volumes" {
   for_each = local.disks_by_key
 
   availability_zone = data.aws_subnet.effective.availability_zone
-  size              = tonumber(each.value.size)
+  size              = each.value.size
   type              = each.value.type
   encrypted         = true
   kms_key_id        = data.aws_ssm_parameter.ebs_kms.value
@@ -19,7 +19,7 @@ resource "aws_volume_attachment" "all_attachments" {
   for_each    = local.disks_by_key
   device_name = local.device_names[min(each.value.disk_index, length(local.device_names) - 1)]
   volume_id   = aws_ebs_volume.all_volumes[each.key].id
-  instance_id = aws_instance.this.id   # <— if your instance resource name differs, update this
+  instance_id = aws_instance.this.id  # change this if your instance resource name differs
 }
 
 
