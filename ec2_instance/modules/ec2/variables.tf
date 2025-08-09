@@ -14,6 +14,12 @@ variable "vpc_id" {
   type        = string
   default     = ""
 }
+
+variable "subnet_ID" {
+  type        = string
+  description = "Subnet ID"
+}
+
 variable "availability_zone" {
   description = "AZ to select a single subnet when subnet_ID is not provided"
   type        = string
