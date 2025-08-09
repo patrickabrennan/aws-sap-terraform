@@ -1,6 +1,6 @@
 instances_to_create = {
     sapd01db1 = {
-        "private_ip"        = "10.0.16.144"
+        #"private_ip"        = "10.0.16.144"
         "domain"            = "pabrennan.com"        
         "application_code"  = "hana"
         "application_SID"   = "D01"
@@ -21,7 +21,7 @@ instances_to_create = {
     }
 
     sapd01cs = {
-        "private_ip"       = "10.0.0.145"
+        #"private_ip"       = "10.0.0.145"
         "domain"           = "pabrennan.com"        
         "application_code" = "nw"
         "application_SID"  = "D01"
