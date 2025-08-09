@@ -1,6 +1,8 @@
 module "ec2" {
   source   = "./modules/ec2"
-  for_each = var.instances_to_create
+  #comment out below and replace 
+  #for_each = var.instances_to_create
+  for_each = local.instances_to_create_normalized
 
   aws_region               = var.aws_region
   environment              = var.environment
@@ -11,7 +13,9 @@ module "ec2" {
   application_SID          = each.value["application_SID"]
   ha                       = each.value["ha"]
   ami_ID                   = each.value["ami_ID"]
+  # commnet out and replace, but not sure why
   subnet_ID                = each.value["subnet_ID"]
+  subnet_ID                = each.value["subnet_ID"]   # now guaranteed
   instance_type            = each.value["instance_type"]
   hana_data_storage_type   = try(each.value["hana_data_storage_type"], null)
   hana_logs_storage_type   = try(each.value["hana_logs_storage_type"], null)
