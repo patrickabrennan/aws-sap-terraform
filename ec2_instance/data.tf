@@ -1,3 +1,14 @@
+data "aws_ssm_parameter" "ec2_hana_sg" {
+  # Path produced by the security_group workspace:
+  # /<env>/security_group/<sg_name>/id
+  name = "/${var.environment}/security_group/db1/id"
+}
+
+data "aws_ssm_parameter" "ec2_nw_sg" {
+  name = "/${var.environment}/security_group/app1/id"
+}
+
+
 # Discover the VPC created by the network workspace
 data "aws_vpc" "sap" {
   tags = {
