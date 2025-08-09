@@ -1,4 +1,5 @@
 resource "aws_ebs_volume" "all_volumes" {
+  availability_zone = data.aws_subnet.effective.availability_zone
   for_each = { for idx, val in local.all_disks : join(".", [val.identifier, val.disk_index]) => val }
 
   availability_zone = data.aws_subnet.selected.availability_zone
