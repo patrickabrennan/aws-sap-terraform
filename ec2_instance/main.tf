@@ -14,7 +14,7 @@ module "ec2" {
   ha                       = each.value["ha"]
   ami_ID                   = each.value["ami_ID"]
   # commnet out and replace, but not sure why
-  subnet_ID                = each.value["subnet_ID"]
+  #subnet_ID                = each.value["subnet_ID"]
   subnet_ID                = each.value["subnet_ID"]   # now guaranteed
   instance_type            = each.value["instance_type"]
   hana_data_storage_type   = try(each.value["hana_data_storage_type"], null)
