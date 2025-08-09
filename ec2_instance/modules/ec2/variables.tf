@@ -62,11 +62,6 @@ variable "ami_ID" {
   type        = string
 }
 
-variable "subnet_ID" {
-  description = "Subnet ID"
-  type        = string
-}
-
 variable "instance_type" {
   description = "Instance type"
   type        = string
