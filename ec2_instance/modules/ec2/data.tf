@@ -29,16 +29,21 @@ data "aws_subnet" "by_id" {
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
-  filter { name = "vpc-id"; values = [var.vpc_id] }
+  filter { 
+    name = "vpc-id" 
+    values = [var.vpc_id]
+  }
   # tighten as needed:
   # filter { name = "availability-zone"; values = [var.availability_zone] }
   # filter { name = "tag:Name"; values = ["sap-public-a"] }
 }
 
 locals {
-  subnet_id_effective = var.subnet_ID != "" ? data.aws_subnet.by_id[0].id : (
-    length(data.aws_subnets.by_filters[0].ids) == 1 ?
-    data.aws_subnets.by_filters[0].ids[0] :
-    (throw("Subnet lookup returned 0 or multiple results—add more filters or pass subnet_ID explicitly."))
-  )
+  subnet_id_effective = var.subnet_ID != "" 
+    ? data.aws_subnet.by_id[0].id 
+    : (
+        length(data.aws_subnets.by_filters[0].ids) == 1 
+        ? data.aws_subnets.by_filters[0].ids[0] 
+        : ""
+      )
 }
