@@ -1,3 +1,20 @@
+variable "aws_region" {
+  description = "AWS region for this workspace"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (dev, qa, prod)"
+  type        = string
+}
+
+# Only add this if you *must* keep a leftover vpc_id var from TFC. Otherwise, delete it in TFC (step 3).
+variable "vpc_id" {
+  description = "Deprecated/unused. Kept only to silence org-level tfvars."
+  type        = string
+  default     = ""
+}
+
 variable "instances_to_create" {
   description = "Map of instances to create"
   type = map(object({
