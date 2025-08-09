@@ -21,6 +21,45 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 #data "aws_subnet" "selected" {
 #  id = var.subnet_ID
 #}
+
+data "aws_subnets" "by_filters" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+
+  # Add tag filters from the map (one filter per key)
+  dynamic "filter" {
+    for_each = var.subnet_tag_filters
+    content {
+      name   = "tag:${filter.key}"
+      values = [filter.value]
+    }
+  }
+}
+
+locals {
+  # exactly one subnet must match
+  subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1 ? data.aws_subnets.by_filters.ids[0] : ""
+}
+
+resource "null_resource" "assert_single_subnet" {
+  lifecycle {
+    precondition {
+      condition     = local.subnet_id_effective != ""
+      error_message = "Subnet lookup did not resolve to exactly one subnet. Check AZ/tag filters."
+    }
+  }
+}
+
+data "aws_subnet" "effective" {
+  id = local.subnet_id_effective
+}
+
 data "aws_subnet" "by_id" {
   count = var.subnet_ID != "" ? 1 : 0
   id    = var.subnet_ID
