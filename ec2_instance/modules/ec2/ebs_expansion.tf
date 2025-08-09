@@ -14,7 +14,17 @@ locals {
 
   common_disks_expanded = flatten([for item in local.common[var.application_code] : [for i in range(item["disk_nb"]) : merge(item, { "disk_index" : i })]])
 
-  custom_ebs_config_expanded = flatten([for item in var.custom_ebs_config : [for i in range(item["disk_nb"]) : merge(item, { "disk_index" : i })]])
+  #custom_ebs_config_expanded = flatten([for item in var.custom_ebs_config : [for i in range(item["disk_nb"]) : merge(item, { "disk_index" : i })]])
+  custom_ebs_config_expanded = flatten([
+    for item in coalesce(var.custom_ebs_config, []) : [
+      for i in range(tonumber(item["disk_nb"])) :
+      merge(item, { disk_index = i })
+    ]
+  ])
+}
+
+
+
 
   standard_disks = concat(local.hana_data_expanded, local.hana_logs_expanded, local.hana_backup_expanded, local.hana_shared_expanded, local.common_disks_expanded)
 
