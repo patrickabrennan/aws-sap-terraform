@@ -4,4 +4,8 @@ data "aws_vpc" "selected" {
     name   = "tag:Name"
     values = ["sap_vpc"]
   }
+  tags = {
+    Name         = "sap_vpc"
+    sap_relevant = "true"
+  }
 }
