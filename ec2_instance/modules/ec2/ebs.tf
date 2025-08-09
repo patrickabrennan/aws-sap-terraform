@@ -1,8 +1,8 @@
 resource "aws_ebs_volume" "all_volumes" {
-  availability_zone = data.aws_subnet.effective.availability_zone
   for_each = { for idx, val in local.all_disks : join(".", [val.identifier, val.disk_index]) => val }
 
-  availability_zone = data.aws_subnet.selected.availability_zone
+  availability_zone = data.aws_subnet.effective.availability_zone
+  #availability_zone = data.aws_subnet.selected.availability_zone
   size              = each.value["disk_size"]
   type              = each.value["disk_type"]
   iops              = contains(["gp2", "st1", "sc1"], each.value["disk_type"]) ? null : each.value["iops"]
