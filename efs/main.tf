@@ -18,13 +18,19 @@ module "security_group" {
   aws_region  = var.aws_region
   environment = var.environment
   sg_name     = "${var.environment}_${each.key}"
-  vpc         = data.aws_vpc.selected.id
+  #add in below and comment out old vpc line
+  vpc         = local.vpc_id
+  #vpc         = data.aws_vpc.selected.id
 
   tags = merge(local.tags, {
     type   = "efs",
     Name   = "${var.environment}_${each.key}"
     efs_id = "${each.value.efs_id}"
   })
+#should I have used this 
+#tags        = merge(local.tags, {
+#    efs_id = each.value.efs_id
+#  })
 }
 
 module "mount_target" {
