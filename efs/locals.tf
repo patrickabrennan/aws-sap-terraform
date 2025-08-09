@@ -1,5 +1,6 @@
 locals {
-  vpc_id = var.vpc_id != "" ? var.vpc_id : data.aws_vpc.selected.id
+  #vpc_id = var.vpc_id != "" ? var.vpc_id : data.aws_vpc.selected.id
+  vpc_id = data.aws_vpc.selected.id  # override is ignored on purpose
   tags = {
     "owner"       = "AWS-SAP-ProServe"
     "environment" = var.environment
