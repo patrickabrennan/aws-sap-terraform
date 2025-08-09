@@ -10,12 +10,21 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 
 
 # Discover the VPC created by the network workspace
+#data "aws_vpc" "sap" {
+#  tags = {
+#    Name         = "sap_vpc"
+#    sap_relevant = "true"
+#  }
+#}
+
 data "aws_vpc" "sap" {
   tags = {
     Name         = "sap_vpc"
     sap_relevant = "true"
+    environment  = var.environment
   }
 }
+
 
 # Find subnets in that VPC that match your naming convention
 data "aws_subnets" "public_named" {
