@@ -141,10 +141,3 @@ variable "sap_discovery_tag" {
   type        = string
   default     = null
 }
-
-variable "private_ip" {
-  description = "Optional static private IP"
-  type        = string
-  default     = null
-  nullable    = true
-}
