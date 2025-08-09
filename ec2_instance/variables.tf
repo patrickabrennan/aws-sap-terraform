@@ -23,6 +23,7 @@ variable "sap_discovery_tag" {
 variable "instances_to_create" {
   description = "Map of instances to create"
   type = map(object({
+    availability_zone        = string
     domain                   = string
     application_code         = string
     application_SID          = string
