@@ -22,26 +22,6 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 #  id = var.subnet_ID
 #}
 
-data "aws_subnets" "by_filters" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-  filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-
-  # Add tag filters from the map (one filter per key)
-  dynamic "filter" {
-    for_each = var.subnet_tag_filters
-    content {
-      name   = "tag:${filter.key}"
-      values = [filter.value]
-    }
-  }
-}
-
 locals {
   # exactly one subnet must match
   subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1 ? data.aws_subnets.by_filters.ids[0] : ""
