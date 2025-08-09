@@ -40,11 +40,6 @@ data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
 
-data "aws_subnet" "by_id" {
-  count = var.subnet_ID != "" ? 1 : 0
-  id    = var.subnet_ID
-}
-
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -58,19 +53,3 @@ data "aws_subnets" "by_filters" {
   # filter { name = "tag:Name"; values = ["sap-public-a"] }
 }
 
-locals {
-  subnet_id_effective = (
-    var.subnet_ID != ""
-    ? data.aws_subnet.by_id[0].id
-    : (
-        length(data.aws_subnets.by_filters[0].ids) == 1
-        ? data.aws_subnets.by_filters[0].ids[0]
-        : ""
-      )
-  )
-}
-
-# After computing local.subnet_id_effective
-data "aws_subnet" "effective" {
-  id = local.subnet_id_effective
-}
