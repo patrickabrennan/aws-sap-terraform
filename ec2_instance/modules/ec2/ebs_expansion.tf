@@ -1,7 +1,6 @@
 locals {
   # ---------- Inputs ----------
-  # Use the list as-is (variable has default = [])
-  custom_ebs_config_input = var.custom_ebs_config
+  custom_ebs_config_input = coalesce(var.custom_ebs_config, [])  # <— never null
 
   # Normalize application code ("HANA" vs "hana")
   app = lower(var.application_code)
@@ -13,7 +12,6 @@ locals {
   hana_shared_type = var.hana_shared_storage_type != "" ? var.hana_shared_storage_type : "gp3"
 
   # ---------- Spec-driven expansions (HANA) ----------
-  # Uses "default" profile when instance_type-specific entry doesn't exist
   hana_data = (
     local.app == "hana"
     ? try(try(local.hana_data_specs[var.instance_type], local.hana_data_specs["default"])[local.hana_data_type], [])
@@ -94,7 +92,6 @@ locals {
   )
 
   # ---------- Normalize every disk (NO null size/type) ----------
-  # Defaults for common names; otherwise 50 GiB; type defaults to gp3
   default_size_for = {
     "usr-sap" = 100,
     "trans"   = 100,
@@ -108,11 +105,11 @@ locals {
       name       = (lookup(d, "name", null) != null ? lookup(d, "name", null) : "disk")
       disk_index = lookup(d, "disk_index", idx)
 
-      # Pull size from any of the known keys; if <= 0, fall back by name, else 50
+      # Pull size from any known key; if <= 0, fall back by name (or 50 GiB)
       size = (
-        (try(tonumber(lookup(d, "size", 0)), 0) > 0) ? try(tonumber(lookup(d, "size", 0)), 0) :
-        (try(tonumber(lookup(d, "volume_size", 0)), 0) > 0) ? try(tonumber(lookup(d, "volume_size", 0)), 0) :
-        (try(tonumber(lookup(d, "size_gb", 0)), 0) > 0) ? try(tonumber(lookup(d, "size_gb", 0)), 0) :
+        (try(tonumber(lookup(d, "size", 0)), 0) > 0)         ? try(tonumber(lookup(d, "size", 0)), 0) :
+        (try(tonumber(lookup(d, "volume_size", 0)), 0) > 0)  ? try(tonumber(lookup(d, "volume_size", 0)), 0) :
+        (try(tonumber(lookup(d, "size_gb", 0)), 0) > 0)      ? try(tonumber(lookup(d, "size_gb", 0)), 0) :
         lookup(local.default_size_for, lower(lookup(d, "name", "")), 50)
       )
 
