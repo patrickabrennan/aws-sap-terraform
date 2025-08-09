@@ -9,6 +9,17 @@ variable "environment" {
   type        = string
 }
 
+variable "vpc_id" {
+  description = "VPC to resolve subnets in (required if subnet_ID is empty)"
+  type        = string
+  default     = ""
+}
+variable "availability_zone" {
+  description = "AZ to select a single subnet when subnet_ID is not provided"
+  type        = string
+  default     = ""
+}
+
 variable "hostname" {
   description = "Hostname"
   type        = string
