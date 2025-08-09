@@ -29,21 +29,25 @@ data "aws_subnet" "by_id" {
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
-  filter { 
-    name = "vpc-id" 
+  filter {
+    name   = "vpc-id"
     values = [var.vpc_id]
   }
-  # tighten as needed:
+
+  # Add more filters if needed to ensure exactly ONE match
   # filter { name = "availability-zone"; values = [var.availability_zone] }
   # filter { name = "tag:Name"; values = ["sap-public-a"] }
 }
 
 locals {
-  subnet_id_effective = var.subnet_ID != "" 
-    ? data.aws_subnet.by_id[0].id 
+  subnet_id_effective = (
+    var.subnet_ID != ""
+    ? data.aws_subnet.by_id[0].id
     : (
-        length(data.aws_subnets.by_filters[0].ids) == 1 
-        ? data.aws_subnets.by_filters[0].ids[0] 
+        length(data.aws_subnets.by_filters[0].ids) == 1
+        ? data.aws_subnets.by_filters[0].ids[0]
         : ""
       )
+  )
 }
+
