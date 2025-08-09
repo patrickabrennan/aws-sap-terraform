@@ -22,7 +22,9 @@ module "ec2_instances" {
   hana_backup_storage_type = try(each.value.hana_backup_storage_type, "")
   hana_shared_storage_type = try(each.value.hana_shared_storage_type, "")
 
-  custom_ebs_config = null # unless you want to pass it in per instance
+  #custom_ebs_config = null # unless you want to pass it in per instance
+  custom_ebs_config = try(each.value.custom_ebs_config, [])
+
   key_name          = each.value.key_name
   monitoring        = each.value.monitoring
   root_ebs_size     = tostring(each.value.root_ebs_size) # your module expects string
