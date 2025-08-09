@@ -20,8 +20,9 @@ variable "domain" {
 }
 
 variable "private_ip" {
-  description = "Private Ip address"
+  description = "Private IP address (optional)"
   type        = string
+  default     = ""  # allow omission
 }
 
 variable "application_code" {
