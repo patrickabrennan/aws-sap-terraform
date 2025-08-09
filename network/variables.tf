@@ -13,3 +13,9 @@ variable "sap_discovery_tag" {
   description = "Tag key that identifies sap relevant objects"
   type        = string
 }
+
+variable "vpc_id" {
+  description = "VPC ID for resources"
+  type        = string
+  default     = null
+}
