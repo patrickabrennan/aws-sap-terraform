@@ -63,6 +63,7 @@ locals {
   )
 
   # ---------- Common disks (for HANA/NW) ----------
+  # Requires local.common to be defined elsewhere (ebs_specs_common.tf)
   common_disks_expanded = try(flatten([
     for item in local.common[var.application_code] : [
       for i in range(tonumber(lookup(item, "disk_nb", 0))) :
@@ -101,10 +102,7 @@ locals {
     "/dev/xvdu","/dev/xvdv","/dev/xvdw","/dev/xvdx","/dev/xvdy"
   ]
 
-  # Map of disks keyed by "name-index" for stable for_each
-  disks_by_key = { for d in local.all_disks : "${d.name}-${d.disk_index}" => d }
-
-  # Unique, stable keys even if some items don’t have "name"
+  # Unique, stable keys even if some items don't have "name"
   disks_by_key = {
     for idx, d in local.all_disks :
     format("%03d-%s", idx, lookup(d, "name", "disk")) => merge(
@@ -114,7 +112,6 @@ locals {
     )
   }
 }
-
 
 
 
