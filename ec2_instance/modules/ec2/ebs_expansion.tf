@@ -1,8 +1,9 @@
 locals {
-  # ---------- Safe inputs ----------
-  custom_ebs_config_input = coalesce(var.custom_ebs_config, [])
+  # ---------- Inputs ----------
+  # Use the list as-is (variable has default = [])
+  custom_ebs_config_input = var.custom_ebs_config
 
-  # Normalize application code to avoid case/key mismatches ("HANA" vs "hana")
+  # Normalize application code ("HANA" vs "hana")
   app = lower(var.application_code)
 
   # Default storage types if not set
@@ -12,13 +13,12 @@ locals {
   hana_shared_type = var.hana_shared_storage_type != "" ? var.hana_shared_storage_type : "gp3"
 
   # ---------- Spec-driven expansions (HANA) ----------
-  # Use "default" profile if the instance_type-specific entry doesn't exist
+  # Uses "default" profile when instance_type-specific entry doesn't exist
   hana_data = (
     local.app == "hana"
     ? try(try(local.hana_data_specs[var.instance_type], local.hana_data_specs["default"])[local.hana_data_type], [])
     : []
   )
-
   hana_data_expanded = (
     local.app == "hana"
     ? try([for i in range(tonumber(try(local.hana_data[0]["disk_nb"], 0))) :
@@ -31,7 +31,6 @@ locals {
     ? try(try(local.hana_logs_specs[var.instance_type], local.hana_logs_specs["default"])[local.hana_logs_type], [])
     : []
   )
-
   hana_logs_expanded = (
     local.app == "hana"
     ? try([for i in range(tonumber(try(local.hana_logs[0]["disk_nb"], 0))) :
@@ -44,7 +43,6 @@ locals {
     ? try(try(local.hana_backup_specs[var.instance_type], local.hana_backup_specs["default"])[local.hana_backup_type], [])
     : []
   )
-
   hana_backup_expanded = (
     local.app == "hana"
     ? try([for i in range(tonumber(try(local.hana_backup[0]["disk_nb"], 0))) :
@@ -57,7 +55,6 @@ locals {
     ? try(try(local.hana_shared_specs[var.instance_type], local.hana_shared_specs["default"])[local.hana_shared_type], [])
     : []
   )
-
   hana_shared_expanded = (
     local.app == "hana"
     ? try([for i in range(tonumber(try(local.hana_shared[0]["disk_nb"], 0))) :
@@ -65,8 +62,7 @@ locals {
     : []
   )
 
-  # ---------- Common disks (for HANA/NW) ----------
-  # Requires local.common to be defined (e.g., in ebs_specs_common.tf)
+  # ---------- Common disks (requires local.common in ebs_specs_common.tf) ----------
   common_disks_expanded = try(flatten([
     for item in local.common[local.app] : [
       for i in range(tonumber(lookup(item, "disk_nb", 0))) :
@@ -82,7 +78,7 @@ locals {
     ]
   ])
 
-  # ---------- Final selection before normalization ----------
+  # ---------- Selection before normalization ----------
   standard_disks = concat(
     local.hana_data_expanded,
     local.hana_logs_expanded,
@@ -97,44 +93,32 @@ locals {
     : local.custom_ebs_config_expanded
   )
 
-  # ---------- Normalize every disk (ensure non-null size/type/name) ----------
-  # Defaults:
-  # - size: 100 GiB for known common names; 50 GiB otherwise
-  # - type: gp3
-  # These defaults guarantee volume creation even if a spec entry was incomplete.
+  # ---------- Normalize every disk (NO null size/type) ----------
+  # Defaults for common names; otherwise 50 GiB; type defaults to gp3
   default_size_for = {
     "usr-sap" = 100,
     "trans"   = 100,
     "sapmnt"  = 100,
     "diag"    = 50,
-    "tmp"     = 50
+    "tmp"     = 50,
   }
 
   normalized_disks = [
     for idx, d in local.all_disks : {
-      name       = coalesce(lookup(d, "name", null), "disk")
+      name       = (lookup(d, "name", null) != null ? lookup(d, "name", null) : "disk")
       disk_index = lookup(d, "disk_index", idx)
-      # derive size from any known key; if still null/0, apply defaults by name, else 50
+
+      # Pull size from any of the known keys; if <= 0, fall back by name, else 50
       size = (
-        coalesce(
-          try(tonumber(lookup(d, "size", null)), null),
-          try(tonumber(lookup(d, "volume_size", null)), null),
-          try(tonumber(lookup(d, "size_gb", null)), null),
-          null
-        ) != null
-        ? coalesce(
-            try(tonumber(lookup(d, "size", null)), null),
-            try(tonumber(lookup(d, "volume_size", null)), null),
-            try(tonumber(lookup(d, "size_gb", null)), null)
-          )
-        : lookup(local.default_size_for, lower(coalesce(lookup(d, "name", null), "")), 50)
+        (try(tonumber(lookup(d, "size", 0)), 0) > 0) ? try(tonumber(lookup(d, "size", 0)), 0) :
+        (try(tonumber(lookup(d, "volume_size", 0)), 0) > 0) ? try(tonumber(lookup(d, "volume_size", 0)), 0) :
+        (try(tonumber(lookup(d, "size_gb", 0)), 0) > 0) ? try(tonumber(lookup(d, "size_gb", 0)), 0) :
+        lookup(local.default_size_for, lower(lookup(d, "name", "")), 50)
       )
-      type = coalesce(
-        lookup(d, "type", null),
-        lookup(d, "volume_type", null),
-        lookup(d, "ebs_type", null),
-        "gp3"
-      )
+
+      type = lookup(d, "type",
+              lookup(d, "volume_type",
+              lookup(d, "ebs_type", "gp3")))
     }
   ]
 
