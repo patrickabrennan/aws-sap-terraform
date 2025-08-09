@@ -1,3 +1,5 @@
+# --- SSM parameters used by the module ---
+
 data "aws_ssm_parameter" "ebs_kms" {
   name = "/${var.environment}/kms/ebs/arn"
 }
@@ -18,38 +20,47 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
   name = "/${var.environment}/security_group/app1/id"
 }
 
-#data "aws_subnet" "selected" {
-#  id = var.subnet_ID
-#}
-
-locals {
-  # exactly one subnet must match
-  subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1 ? data.aws_subnets.by_filters.ids[0] : ""
-}
-
-resource "null_resource" "assert_single_subnet" {
-  lifecycle {
-    precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = "Subnet lookup did not resolve to exactly one subnet. Check AZ/tag filters."
-    }
-  }
-}
-
-data "aws_subnet" "effective" {
-  id = local.subnet_id_effective
-}
+# --- Subnet discovery (no subnet_ID var) ---
+# Require vpc_id + availability_zone + tag filters to resolve exactly one subnet.
 
 data "aws_subnets" "by_filters" {
-  count = var.subnet_ID == "" ? 1 : 0
-
   filter {
     name   = "vpc-id"
     values = [var.vpc_id]
   }
 
-  # Add more filters if needed to ensure exactly ONE match
-  # filter { name = "availability-zone"; values = [var.availability_zone] }
-  # filter { name = "tag:Name"; values = ["sap-public-a"] }
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+
+  # One filter per tag key/value provided to the module.
+  dynamic "filter" {
+    for_each = var.subnet_tag_filters
+    content {
+      name   = "tag:${filter.key}"
+      values = [filter.value]
+    }
+  }
 }
 
+locals {
+  subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1
+    ? data.aws_subnets.by_filters.ids[0]
+    : ""
+}
+
+# Fail fast if the lookup is not unique (0 or >1).
+resource "null_resource" "assert_single_subnet" {
+  lifecycle {
+    precondition {
+      condition     = local.subnet_id_effective != ""
+      error_message = "Subnet lookup did not resolve to exactly one subnet. Check availability_zone and subnet_tag_filters."
+    }
+  }
+}
+
+# Resolved subnet object (used for AZ, etc.).
+data "aws_subnet" "effective" {
+  id = local.subnet_id_effective
+}
