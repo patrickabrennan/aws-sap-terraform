@@ -63,7 +63,7 @@ locals {
   )
 
   # ---------- Common disks (for HANA/NW) ----------
-  # Requires local.common to be defined in ebs_specs_common.tf
+  # Requires local.common to be defined (e.g., in ebs_specs_common.tf)
   common_disks_expanded = try(flatten([
     for item in local.common[var.application_code] : [
       for i in range(tonumber(lookup(item, "disk_nb", 0))) :
@@ -94,44 +94,32 @@ locals {
     : local.custom_ebs_config_expanded
   )
 
-  # ---------- Normalize every disk so size/type/name are always present ----------
-  # Accepts alternative keys (volume_size, size_gb / volume_type, ebs_type)
+  # ---------- Normalize every disk (NO null size/type left) ----------
+  # We DO NOT merge the original map afterwards (to avoid null overriding defaults).
   normalized_disks = [
-    for idx, d in local.all_disks : merge(
-      {
-        name       = coalesce(lookup(d, "name", null), "disk")
-        disk_index = lookup(d, "disk_index", idx)
-        size       = (
-          can(tonumber(lookup(d, "size", null)))        ? tonumber(lookup(d, "size", null)) :
-          can(tonumber(lookup(d, "volume_size", null))) ? tonumber(lookup(d, "volume_size", null)) :
-          can(tonumber(lookup(d, "size_gb", null)))     ? tonumber(lookup(d, "size_gb", null)) :
-          0
-        )
-        type       = coalesce(
-          lookup(d, "type", null),
-          lookup(d, "volume_type", null),
-          lookup(d, "ebs_type", null),
-          "gp3"
-        )
-      },
-      d
-    )
+    for idx, d in local.all_disks : {
+      name       = coalesce(lookup(d, "name", null), "disk")
+      disk_index = lookup(d, "disk_index", idx)
+      size       = coalesce(
+                     try(tonumber(lookup(d, "size", null)), null),
+                     try(tonumber(lookup(d, "volume_size", null)), null),
+                     try(tonumber(lookup(d, "size_gb", null)), null),
+                     0
+                   )
+      type       = coalesce(
+                     lookup(d, "type", null),
+                     lookup(d, "volume_type", null),
+                     lookup(d, "ebs_type", null),
+                     "gp3"
+                   )
+      # Keep any extra fields you rely on:
+      # e.g., iops = lookup(d, "iops", null), throughput = lookup(d, "throughput", null)
+    }
   ]
 
-  # Filter out any malformed entries (size < 1)
-  valid_disks = [ for d in local.normalized_disks : d if d.size >= 1 ]
-
-  # Optional: fail fast if anything got filtered out (helps catch spec mistakes)
+  # Filter/diagnose
+  valid_disks   = [ for d in local.normalized_disks : d if d.size >= 1 ]
   invalid_disks = [ for d in local.normalized_disks : d if d.size < 1 ]
-  # (If you prefer a hard error, uncomment this precondition and ensure a resource block references it.)
-  # resource "null_resource" "assert_valid_disks" {
-  #   lifecycle {
-  #     precondition {
-  #       condition     = length(local.invalid_disks) == 0
-  #       error_message = "Some disks had no valid size/type: ${[for d in local.invalid_disks : jsonencode(d)]}"
-  #     }
-  #   }
-  # }
 
   # Device names to attach in order
   device_names = [
@@ -141,17 +129,12 @@ locals {
     "/dev/xvdu","/dev/xvdv","/dev/xvdw","/dev/xvdx","/dev/xvdy"
   ]
 
-  # Stable for_each keys; always include name and disk_index
+  # Stable for_each keys
   disks_by_key = {
     for idx, d in local.valid_disks :
-    format("%03d-%s", idx, d.name) => merge(
-      { name = d.name, disk_index = d.disk_index },
-      d,
-      { seq = idx }
-    )
+    format("%03d-%s", idx, d.name) => merge(d, { seq = idx })
   }
 }
-
 
 
 
