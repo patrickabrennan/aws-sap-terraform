@@ -103,6 +103,16 @@ locals {
 
   # Map of disks keyed by "name-index" for stable for_each
   disks_by_key = { for d in local.all_disks : "${d.name}-${d.disk_index}" => d }
+
+  # Unique, stable keys even if some items don’t have "name"
+  disks_by_key = {
+    for idx, d in local.all_disks :
+    format("%03d-%s", idx, lookup(d, "name", "disk")) => merge(
+      { name = lookup(d, "name", "disk"), disk_index = lookup(d, "disk_index", idx) },
+      d,
+      { seq = idx }
+    )
+  }
 }
 
 
