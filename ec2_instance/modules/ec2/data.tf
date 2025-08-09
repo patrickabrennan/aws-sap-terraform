@@ -44,11 +44,19 @@ data "aws_subnets" "by_filters" {
   }
 }
 
+#locals {
+#  subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1
+#    ? data.aws_subnets.by_filters.ids[0]
+#    : ""
+#}
 locals {
-  subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1
+  subnet_id_effective = (
+    length(data.aws_subnets.by_filters.ids) == 1
     ? data.aws_subnets.by_filters.ids[0]
     : ""
+  )
 }
+
 
 # Fail fast if the lookup is not unique (0 or >1).
 resource "null_resource" "assert_single_subnet" {
