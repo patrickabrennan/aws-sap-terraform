@@ -15,6 +15,11 @@ variable "vpc_id" {
   default     = ""
 }
 
+variable "sap_discovery_tag" {
+  description = "Tag key that identifies sap relevant objects"
+  type        = string
+}
+
 variable "instances_to_create" {
   description = "Map of instances to create"
   type = map(object({
