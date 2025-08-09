@@ -12,8 +12,20 @@ variable "environment" {
 variable "vpc_id" {
   description = "VPC to resolve subnets in (required if subnet_ID is empty)"
   type        = string
-  default     = ""
 }
+
+variable "subnet_tag_filters" {
+  type        = map(string)
+  description = "Tag filters to uniquely identify the subnet (e.g., tier)"
+  default     = {}
+}
+
+variable "custom_ebs_config" {
+  description = "Custom EBS configuration list"
+  type        = list(map(any))
+  default     = []
+}
+
 
 variable "subnet_ID" {
   type        = string
@@ -23,7 +35,6 @@ variable "subnet_ID" {
 variable "availability_zone" {
   description = "AZ to select a single subnet when subnet_ID is not provided"
   type        = string
-  default     = ""
 }
 
 variable "hostname" {
