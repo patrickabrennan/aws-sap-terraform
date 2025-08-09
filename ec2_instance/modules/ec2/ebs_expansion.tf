@@ -1,32 +1,36 @@
 locals {
+  # Ensure the module var has default = [] in modules/ec2/variables.tf
+  # variable "custom_ebs_config" { type = list(map(any)); default = [] }
 
-  hana_data          = var.application_code == "hana" ? try(local.hana_data_specs[var.instance_type][var.hana_data_storage_type], []) : []
-  hana_data_expanded = var.application_code == "hana" ? try([for item in range(local.hana_data[0]["disk_nb"]) : merge(local.hana_data[0], { "disk_index" : item })], []) : []
+  # Safe input
+  custom_ebs_config_input = coalesce(var.custom_ebs_config, [])
 
-  hana_logs          = var.application_code == "hana" ? try(local.hana_logs_specs[var.instance_type][var.hana_logs_storage_type], []) : []
-  hana_logs_expanded = var.application_code == "hana" ? try([for item in range(local.hana_logs[0]["disk_nb"]) : merge(local.hana_logs[0], { "disk_index" : item })], []) : []
-
-  hana_backup          = var.application_code == "hana" ? try(local.hana_backup_specs[var.instance_type][var.hana_backup_storage_type], []) : []
-  hana_backup_expanded = var.application_code == "hana" ? try([for item in range(local.hana_backup[0]["disk_nb"]) : merge(local.hana_backup[0], { "disk_index" : item })], []) : []
-
-  hana_shared          = var.application_code == "hana" ? try(local.hana_shared_specs[var.instance_type][var.hana_shared_storage_type], []) : []
-  hana_shared_expanded = var.application_code == "hana" ? try([for item in range(local.hana_shared[0]["disk_nb"]) : merge(local.hana_shared[0], { "disk_index" : item })], []) : []
-
-  common_disks_expanded = flatten([for item in local.common[var.application_code] : [for i in range(item["disk_nb"]) : merge(item, { "disk_index" : i })]])
-
-  #custom_ebs_config_expanded = flatten([for item in var.custom_ebs_config : [for i in range(item["disk_nb"]) : merge(item, { "disk_index" : i })]])
+  # Expand any user-provided custom disks
   custom_ebs_config_expanded = flatten([
-    for item in coalesce(var.custom_ebs_config, []) : [
+    for item in local.custom_ebs_config_input : [
       for i in range(tonumber(item["disk_nb"])) :
       merge(item, { disk_index = i })
     ]
   ])
-}
 
+  # If you compute these elsewhere, keep those; otherwise define empty lists so Terraform compiles
+  hana_data_expanded    = []
+  hana_logs_expanded    = []
+  hana_backup_expanded  = []
+  hana_shared_expanded  = []
+  common_disks_expanded = []
 
+  # Default “standard” layout when no custom config is provided
+  standard_disks = concat(
+    local.hana_data_expanded,
+    local.hana_logs_expanded,
+    local.hana_backup_expanded,
+    local.hana_shared_expanded,
+    local.common_disks_expanded
+  )
 
-
-  standard_disks = concat(local.hana_data_expanded, local.hana_logs_expanded, local.hana_backup_expanded, local.hana_shared_expanded, local.common_disks_expanded)
-
-  all_disks = var.custom_ebs_config == [] ? local.standard_disks : local.custom_ebs_config_expanded
+  # Final set used by resources
+  all_disks = length(local.custom_ebs_config_input) == 0
+    ? local.standard_disks
+    : local.custom_ebs_config_expanded
 }
