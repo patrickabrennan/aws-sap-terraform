@@ -1,3 +1,9 @@
+ssh_cidrs = ["0.0.0.0/0"]
+# If you also want a bastion SG allowed, list it here (optional)
+# ssh_source_security_group_ids = ["sg-xxxxxxxxxxxxxxxxx"]
+
+
+
 app_sg_list = {
   app1 = {
     description  = "App SG"
