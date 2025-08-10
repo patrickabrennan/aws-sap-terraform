@@ -1,12 +1,14 @@
-# Allow SSH (TCP/22). Leave lists empty to disable.
-variable "ssh_cidrs" {
-  type        = list(string)
-  default     = []
-  description = "CIDR blocks allowed to SSH (e.g., [\"0.0.0.0/0\"])."
+# modules/security_group/variables_ssh.tf
+# Keep only the per-invocation flags here. The SSH vars already exist in variables.tf.
+
+variable "manage_app1" {
+  type        = bool
+  default     = false
+  description = "This module invocation manages the app1 SG."
 }
 
-variable "ssh_source_security_group_ids" {
-  type        = list(string)
-  default     = []
-  description = "Source SG IDs allowed to SSH (e.g., a bastion SG)."
+variable "manage_db1" {
+  type        = bool
+  default     = false
+  description = "This module invocation manages the db1 SG."
 }
