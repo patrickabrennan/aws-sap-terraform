@@ -1,46 +1,43 @@
-# SSH ingress rules for app1 and db1 security groups.
-# This assumes the SG resources are named aws_security_group.app1 and .db1
-
-# From CIDRs -> app1
+# SSH from CIDRs -> app1
 resource "aws_vpc_security_group_ingress_rule" "app1_ssh_cidrs" {
-  for_each          = toset(var.ssh_cidrs)
+  count             = var.manage_app1 ? length(var.ssh_cidrs) : 0
   security_group_id = aws_security_group.app1.id
-  cidr_ipv4         = each.value
+  cidr_ipv4         = var.ssh_cidrs[count.index]
   ip_protocol       = "tcp"
   from_port         = 22
   to_port           = 22
-  description       = "SSH from CIDR ${each.value}"
+  description       = "SSH from CIDR ${var.ssh_cidrs[count.index]}"
 }
 
-# From CIDRs -> db1
+# SSH from CIDRs -> db1
 resource "aws_vpc_security_group_ingress_rule" "db1_ssh_cidrs" {
-  for_each          = toset(var.ssh_cidrs)
+  count             = var.manage_db1 ? length(var.ssh_cidrs) : 0
   security_group_id = aws_security_group.db1.id
-  cidr_ipv4         = each.value
+  cidr_ipv4         = var.ssh_cidrs[count.index]
   ip_protocol       = "tcp"
   from_port         = 22
   to_port           = 22
-  description       = "SSH from CIDR ${each.value}"
+  description       = "SSH from CIDR ${var.ssh_cidrs[count.index]}"
 }
 
-# From source SGs (e.g., bastion) -> app1
+# SSH from source SGs (e.g., bastion) -> app1
 resource "aws_vpc_security_group_ingress_rule" "app1_ssh_sg" {
-  for_each                     = toset(var.ssh_source_security_group_ids)
+  count                        = var.manage_app1 ? length(var.ssh_source_security_group_ids) : 0
   security_group_id            = aws_security_group.app1.id
-  referenced_security_group_id = each.value
+  referenced_security_group_id = var.ssh_source_security_group_ids[count.index]
   ip_protocol                  = "tcp"
   from_port                    = 22
   to_port                      = 22
-  description                  = "SSH from SG ${each.value}"
+  description                  = "SSH from SG ${var.ssh_source_security_group_ids[count.index]}"
 }
 
-# From source SGs (e.g., bastion) -> db1
+# SSH from source SGs (e.g., bastion) -> db1
 resource "aws_vpc_security_group_ingress_rule" "db1_ssh_sg" {
-  for_each                     = toset(var.ssh_source_security_group_ids)
+  count                        = var.manage_db1 ? length(var.ssh_source_security_group_ids) : 0
   security_group_id            = aws_security_group.db1.id
-  referenced_security_group_id = each.value
+  referenced_security_group_id = var.ssh_source_security_group_ids[count.index]
   ip_protocol                  = "tcp"
   from_port                    = 22
   to_port                      = 22
-  description                  = "SSH from SG ${each.value}"
+  description                  = "SSH from SG ${var.ssh_source_security_group_ids[count.index]}"
 }
