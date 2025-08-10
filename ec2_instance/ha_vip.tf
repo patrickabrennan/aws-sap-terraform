@@ -27,8 +27,8 @@ data "aws_subnets" "vip_candidates" {
 resource "aws_network_interface" "ha_vip" {
   for_each = var.enable_vip_eni ? local.ha_groups : {}
 
-  # Single-line ternary to avoid parse errors
-  subnet_id  = var.vip_subnet_id != "" ? var.vip_subnet_id : data.aws_subnets.vip_candidates[0].ids[0]
+  # Single-line ternary to avoid parse issues
+  subnet_id   = var.vip_subnet_id != "" ? var.vip_subnet_id : data.aws_subnets.vip_candidates[0].ids[0]
   private_ips = var.vip_private_ip != "" ? [var.vip_private_ip] : null
 
   # Use SG from SSM based on application type (HANA vs NW)
