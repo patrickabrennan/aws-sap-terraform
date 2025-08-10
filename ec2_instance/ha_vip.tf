@@ -1,15 +1,14 @@
 ############################################################
 # Floating VIP ENI per HA group (optional, same AZ/subnet only)
 # NOTE:
-# - This file assumes you already define these in root data.tf:
+# - Assumes these already exist in root data.tf:
 #     data "aws_ssm_parameter" "ec2_hana_sg" { name = "/${var.environment}/security_group/db1/id" }
 #     data "aws_ssm_parameter" "ec2_nw_sg"   { name = "/${var.environment}/security_group/app1/id" }
-# - ENIs are AZ-bound. If you enable the VIP ENI, keep both HA nodes in the
-#   SAME subnet/AZ, or switch to Route53/NLB for cross-AZ VIP.
+# - ENIs are AZ-bound. For cross-AZ HA, keep this disabled and use Route53/NLB.
 ############################################################
 
-# Only the HA groups from the ORIGINAL input map
 locals {
+  # Only the HA groups from the ORIGINAL input map
   ha_groups = {
     for name, cfg in var.instances_to_create :
     name => cfg if try(cfg.ha, false)
@@ -28,12 +27,8 @@ data "aws_subnets" "vip_candidates" {
 resource "aws_network_interface" "ha_vip" {
   for_each = var.enable_vip_eni ? local.ha_groups : {}
 
-  # WARNING: ENIs are NOT cross-AZ. Use a subnet in the AZ where the active node runs.
-  subnet_id = var.vip_subnet_id != ""
-    ? var.vip_subnet_id
-    : data.aws_subnets.vip_candidates[0].ids[0]
-
-  # Optional fixed VIP (otherwise AWS assigns an IP in the subnet)
+  # Single-line ternary to avoid parse errors
+  subnet_id  = var.vip_subnet_id != "" ? var.vip_subnet_id : data.aws_subnets.vip_candidates[0].ids[0]
   private_ips = var.vip_private_ip != "" ? [var.vip_private_ip] : null
 
   # Use SG from SSM based on application type (HANA vs NW)
