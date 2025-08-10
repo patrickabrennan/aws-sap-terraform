@@ -1,5 +1,5 @@
 ########################################
-# security_group/main.tf  (UPDATED)
+# security_group/main.tf
 ########################################
 
 module "app_security_groups" {
@@ -14,10 +14,6 @@ module "app_security_groups" {
   description  = each.value["description"]
   rules        = each.value["rules"]
   efs_to_allow = each.value["efs_to_allow"]
-
-  # pass-through (safe even if module doesn't use them)
-  ssh_cidrs                     = var.ssh_cidrs
-  ssh_source_security_group_ids = var.ssh_source_security_group_ids
 
   tags = local.tags
 }
@@ -36,24 +32,16 @@ module "db_security_groups" {
   efs_to_allow               = each.value["efs_to_allow"]
   dependency_security_groups = module.app_security_groups
 
-  # pass-through (safe even if module doesn't use them)
-  ssh_cidrs                     = var.ssh_cidrs
-  ssh_source_security_group_ids = var.ssh_source_security_group_ids
-
   tags = local.tags
 }
 
-# Build maps of SG IDs keyed by SG name for both module groups
+# Build maps of SG IDs keyed by SG name (using module outputs)
 locals {
-  app_sg_ids = {
-    for k, m in module.app_security_groups : k => m.security_group_id
-  }
-  db_sg_ids = {
-    for k, m in module.db_security_groups : k => m.security_group_id
-  }
+  app_sg_ids = { for k, m in module.app_security_groups : k => m.sg_id }
+  db_sg_ids  = { for k, m in module.db_security_groups  : k => m.sg_id }
 }
 
-# ---------- SSH from CIDRs -> APP SGs ----------
+# ---------------- SSH from CIDRs -> APP SGs ----------------
 resource "aws_vpc_security_group_ingress_rule" "app_ssh_cidrs" {
   for_each = {
     for pair in setproduct(keys(local.app_sg_ids), var.ssh_cidrs) :
@@ -71,7 +59,7 @@ resource "aws_vpc_security_group_ingress_rule" "app_ssh_cidrs" {
   description       = "SSH from CIDR ${each.value.cidr}"
 }
 
-# ---------- SSH from CIDRs -> DB SGs ----------
+# ---------------- SSH from CIDRs -> DB SGs ----------------
 resource "aws_vpc_security_group_ingress_rule" "db_ssh_cidrs" {
   for_each = {
     for pair in setproduct(keys(local.db_sg_ids), var.ssh_cidrs) :
@@ -89,7 +77,7 @@ resource "aws_vpc_security_group_ingress_rule" "db_ssh_cidrs" {
   description       = "SSH from CIDR ${each.value.cidr}"
 }
 
-# ---------- SSH from source SGs (e.g., bastion) -> APP SGs ----------
+# -------- SSH from source SGs (e.g., bastion) -> APP SGs --------
 resource "aws_vpc_security_group_ingress_rule" "app_ssh_sg" {
   for_each = {
     for pair in setproduct(keys(local.app_sg_ids), var.ssh_source_security_group_ids) :
@@ -107,7 +95,7 @@ resource "aws_vpc_security_group_ingress_rule" "app_ssh_sg" {
   description                  = "SSH from SG ${each.value.source_sg}"
 }
 
-# ---------- SSH from source SGs (e.g., bastion) -> DB SGs ----------
+# -------- SSH from source SGs (e.g., bastion) -> DB SGs --------
 resource "aws_vpc_security_group_ingress_rule" "db_ssh_sg" {
   for_each = {
     for pair in setproduct(keys(local.db_sg_ids), var.ssh_source_security_group_ids) :
@@ -125,7 +113,7 @@ resource "aws_vpc_security_group_ingress_rule" "db_ssh_sg" {
   description                  = "SSH from SG ${each.value.source_sg}"
 }
 
-# Existing block unchanged
+# Existing EFS rule propagation (unchanged)
 module "additional_rules_for_efs" {
   for_each = merge(module.app_security_groups, module.db_security_groups)
   source   = "./modules/additional_rules_for_existing_sg"
