@@ -83,7 +83,6 @@ locals {
     local.hana_shared_expanded,
     local.common_disks_expanded
   )
-
   all_disks = (
     length(local.custom_ebs_config_input) == 0
     ? local.standard_disks
@@ -123,7 +122,7 @@ locals {
     }
   ]
 
-  # Device names to attach in order
+  # ---------- Device naming ----------
   device_names = [
     "/dev/xvdf","/dev/xvdg","/dev/xvdh","/dev/xvdi","/dev/xvdj",
     "/dev/xvdk","/dev/xvdl","/dev/xvdm","/dev/xvdn","/dev/xvdo",
@@ -131,10 +130,13 @@ locals {
     "/dev/xvdu","/dev/xvdv","/dev/xvdw","/dev/xvdx","/dev/xvdy"
   ]
 
-  # Stable for_each keys
+  # Give each final disk a unique, global attach_index for device mapping
+  ordered_disks = local.normalized_disks
+
+  # Stable for_each keys + attach_index (do NOT use disk_index for device names)
   disks_by_key = {
-    for idx, d in local.normalized_disks :
-    format("%03d-%s", idx, d.name) => merge(d, { seq = idx })
+    for idx, d in local.ordered_disks :
+    format("%03d-%s", idx, d.name) => merge(d, { attach_index = idx })
   }
 }
 
