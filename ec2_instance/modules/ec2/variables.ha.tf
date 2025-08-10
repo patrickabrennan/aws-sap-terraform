@@ -5,11 +5,6 @@ variable "ha_azs" {
   description = "Two AZs used for HA pairs. For ENI VIP, use the same AZ/subnet."
 }
 
-variable "availability_zone" {
-  type        = string
-  description = "AZ to place this instance"
-}
-
 # Fallback AZ for non-HA entries if not specified in instances_to_create
 variable "default_availability_zone" {
   type        = string
