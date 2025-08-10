@@ -1,24 +1,19 @@
 ############################################################
 # Floating VIP ENI per HA group (optional, same AZ/subnet only)
+# NOTE:
+# - This file assumes you already define these in root data.tf:
+#     data "aws_ssm_parameter" "ec2_hana_sg" { name = "/${var.environment}/security_group/db1/id" }
+#     data "aws_ssm_parameter" "ec2_nw_sg"   { name = "/${var.environment}/security_group/app1/id" }
+# - ENIs are AZ-bound. If you enable the VIP ENI, keep both HA nodes in the
+#   SAME subnet/AZ, or switch to Route53/NLB for cross-AZ VIP.
 ############################################################
 
-# Pick only the HA groups from the ORIGINAL input map
+# Only the HA groups from the ORIGINAL input map
 locals {
   ha_groups = {
     for name, cfg in var.instances_to_create :
     name => cfg if try(cfg.ha, false)
   }
-}
-
-# Security group SSM parameters (reuse the same paths you use in the module)
-data "aws_ssm_parameter" "ec2_hana_sg" {
-  count = var.enable_vip_eni ? 1 : 0
-  name  = "/${var.environment}/security_group/db1/id"
-}
-
-data "aws_ssm_parameter" "ec2_nw_sg" {
-  count = var.enable_vip_eni ? 1 : 0
-  name  = "/${var.environment}/security_group/app1/id"
 }
 
 # If no VIP subnet is specified, pick one subnet from the VPC
@@ -33,17 +28,19 @@ data "aws_subnets" "vip_candidates" {
 resource "aws_network_interface" "ha_vip" {
   for_each = var.enable_vip_eni ? local.ha_groups : {}
 
-  # WARNING: ENIs are not cross-AZ. Use the same-AZ subnet for both HA nodes
-  subnet_id = var.vip_subnet_id != "" ?
-    var.vip_subnet_id :
-    data.aws_subnets.vip_candidates[0].ids[0]
+  # WARNING: ENIs are NOT cross-AZ. Use a subnet in the AZ where the active node runs.
+  subnet_id = var.vip_subnet_id != ""
+    ? var.vip_subnet_id
+    : data.aws_subnets.vip_candidates[0].ids[0]
 
+  # Optional fixed VIP (otherwise AWS assigns an IP in the subnet)
   private_ips = var.vip_private_ip != "" ? [var.vip_private_ip] : null
 
+  # Use SG from SSM based on application type (HANA vs NW)
   security_groups = [
     lower(each.value.application_code) == "hana"
-    ? data.aws_ssm_parameter.ec2_hana_sg[0].value
-    : data.aws_ssm_parameter.ec2_nw_sg[0].value
+    ? data.aws_ssm_parameter.ec2_hana_sg.value
+    : data.aws_ssm_parameter.ec2_nw_sg.value
   ]
 
   tags = merge(try(each.value.ec2_tags, {}), {
