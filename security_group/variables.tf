@@ -14,16 +14,17 @@ variable "sap_discovery_tag" {
   type        = string
 }
 
+# modules/security_group/variables.tf (inside the module)
 variable "ssh_cidrs" {
   type        = list(string)
   default     = []
-  description = "CIDR blocks allowed for SSH (e.g., [\"0.0.0.0/0\"])."
+  description = "CIDR blocks allowed for SSH."
 }
 
 variable "ssh_source_security_group_ids" {
   type        = list(string)
   default     = []
-  description = "Source SG IDs allowed for SSH (e.g., a bastion SG)."
+  description = "Source SG IDs allowed for SSH."
 }
 
 variable "db_sg_list" {
