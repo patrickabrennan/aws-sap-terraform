@@ -1,4 +1,4 @@
-resource "aws_ebs_volume" "all_volumes" {
+ resource "aws_ebs_volume" "all_volumes" {
   for_each = local.disks_by_key
 
   availability_zone = data.aws_subnet.effective.availability_zone
@@ -12,18 +12,19 @@ resource "aws_ebs_volume" "all_volumes" {
   throughput = (each.value.type == "gp3" && each.value.throughput > 0) ? each.value.throughput : null
 
   tags = merge(var.ec2_tags, {
-    Name        = "${var.hostname}-${each.value.name}-${each.value.disk_index}"
-    environment = var.environment
-    purpose     = each.value.name
-    disk_index  = tostring(each.value.disk_index)
+    Name         = "${var.hostname}-${each.value.name}-${each.value.disk_index}"
+    environment  = var.environment
+    purpose      = each.value.name
+    disk_index   = tostring(each.value.disk_index)
+    attach_index = tostring(each.value.attach_index)
   })
 }
 
 resource "aws_volume_attachment" "all_attachments" {
   for_each    = local.disks_by_key
-  device_name = local.device_names[min(each.value.disk_index, length(local.device_names) - 1)]
+  device_name = local.device_names[min(each.value.attach_index, length(local.device_names) - 1)]
   volume_id   = aws_ebs_volume.all_volumes[each.key].id
-  instance_id = aws_instance.this.id  # change if your instance resource name differs
+  instance_id = aws_instance.this.id
 }
 
 
