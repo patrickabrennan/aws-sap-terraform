@@ -2,6 +2,7 @@
 # Floating VIP ENI per HA group (optional, same AZ/subnet only)
 ############################################################
 
+# Only the HA groups from the ORIGINAL input map
 locals {
   ha_groups = {
     for name, cfg in var.instances_to_create :
@@ -9,16 +10,20 @@ locals {
   }
 }
 
-# Only query subnets when we need a fallback
+# Only query subnets when we need a fallback (no vip_subnet_id set)
 data "aws_subnets" "vip_candidates" {
   count = var.enable_vip_eni && var.vip_subnet_id == "" ? 1 : 0
-  filter { name = "vpc-id"; values = [var.vpc_id] }
+
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
 }
 
 # Compute a safe, effective subnet id ('' if none found)
 locals {
-  vip_candidates_ids       = var.enable_vip_eni && var.vip_subnet_id == "" ? try(data.aws_subnets.vip_candidates[0].ids, []) : []
-  vip_subnet_id_effective  = var.vip_subnet_id != "" ? var.vip_subnet_id : (length(local.vip_candidates_ids) > 0 ? local.vip_candidates_ids[0] : "")
+  vip_candidates_ids      = var.enable_vip_eni && var.vip_subnet_id == "" ? try(data.aws_subnets.vip_candidates[0].ids, []) : []
+  vip_subnet_id_effective = var.vip_subnet_id != "" ? var.vip_subnet_id : (length(local.vip_candidates_ids) > 0 ? local.vip_candidates_ids[0] : "")
 }
 
 resource "aws_network_interface" "ha_vip" {
@@ -28,6 +33,9 @@ resource "aws_network_interface" "ha_vip" {
   private_ips = var.vip_private_ip != "" ? [var.vip_private_ip] : null
 
   # Use SG from SSM based on application type (HANA vs NW)
+  # Assumes these exist in root data.tf:
+  #   data "aws_ssm_parameter" "ec2_hana_sg"
+  #   data "aws_ssm_parameter" "ec2_nw_sg"
   security_groups = [
     lower(each.value.application_code) == "hana"
     ? data.aws_ssm_parameter.ec2_hana_sg.value
