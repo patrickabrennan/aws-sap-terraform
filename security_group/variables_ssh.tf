@@ -1,14 +1,12 @@
-# modules/security_group/variables_ssh.tf
-# (remove ssh_cidrs / ssh_source_security_group_ids from this file)
-
-variable "manage_app1" {
-  type        = bool
-  default     = false
-  description = "This module invocation manages the app1 SG."
+# security_group/variables_ssh.tf (ROOT)
+variable "ssh_cidrs" {
+  type        = list(string)
+  default     = []
+  description = "CIDR blocks allowed for SSH (e.g., [\"0.0.0.0/0\"])."
 }
 
-variable "manage_db1" {
-  type        = bool
-  default     = false
-  description = "This module invocation manages the db1 SG."
+variable "ssh_source_security_group_ids" {
+  type        = list(string)
+  default     = []
+  description = "Source SG IDs allowed for SSH."
 }
