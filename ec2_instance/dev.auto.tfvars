@@ -14,7 +14,7 @@ instances_to_create = {
         "ec2_tags"          = { 
             "tag_key_1" = "tag_value_1" 
         }
-        "instance_type"     = "t3.2xlarge"   #"x2iedn.xlarge"
+        "instance_type"     = "x2iedn.xlarge"
         "hana_data_storage_type"   = "gp3" 
         "hana_logs_storage_type"   = "gp3" 
         "hana_backup_storage_type" = "st1" 
@@ -36,6 +36,6 @@ instances_to_create = {
         "ec2_tags"         = { 
             "tag_key_1" = "tag_value_1" 
         }
-        "instance_type"    = "t3.2xlarge"   #"c5.2xlarge"
+        "instance_type"    = "c5.2xlarge"
     }
 }
