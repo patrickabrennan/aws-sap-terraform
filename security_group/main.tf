@@ -1,3 +1,7 @@
+########################################
+# security_group/main.tf  (UPDATED)
+########################################
+
 module "app_security_groups" {
   for_each = var.app_sg_list
   source   = "./modules/security_group"
@@ -10,6 +14,10 @@ module "app_security_groups" {
   description  = each.value["description"]
   rules        = each.value["rules"]
   efs_to_allow = each.value["efs_to_allow"]
+
+  # pass-through (safe even if module doesn't use them)
+  ssh_cidrs                     = var.ssh_cidrs
+  ssh_source_security_group_ids = var.ssh_source_security_group_ids
 
   tags = local.tags
 }
@@ -28,9 +36,96 @@ module "db_security_groups" {
   efs_to_allow               = each.value["efs_to_allow"]
   dependency_security_groups = module.app_security_groups
 
+  # pass-through (safe even if module doesn't use them)
+  ssh_cidrs                     = var.ssh_cidrs
+  ssh_source_security_group_ids = var.ssh_source_security_group_ids
+
   tags = local.tags
 }
 
+# Build maps of SG IDs keyed by SG name for both module groups
+locals {
+  app_sg_ids = {
+    for k, m in module.app_security_groups : k => m.security_group_id
+  }
+  db_sg_ids = {
+    for k, m in module.db_security_groups : k => m.security_group_id
+  }
+}
+
+# ---------- SSH from CIDRs -> APP SGs ----------
+resource "aws_vpc_security_group_ingress_rule" "app_ssh_cidrs" {
+  for_each = {
+    for pair in setproduct(keys(local.app_sg_ids), var.ssh_cidrs) :
+    "${pair[0]}|${pair[1]}" => {
+      sg_id = local.app_sg_ids[pair[0]]
+      cidr  = pair[1]
+    }
+  }
+
+  security_group_id = each.value.sg_id
+  cidr_ipv4         = each.value.cidr
+  ip_protocol       = "tcp"
+  from_port         = 22
+  to_port           = 22
+  description       = "SSH from CIDR ${each.value.cidr}"
+}
+
+# ---------- SSH from CIDRs -> DB SGs ----------
+resource "aws_vpc_security_group_ingress_rule" "db_ssh_cidrs" {
+  for_each = {
+    for pair in setproduct(keys(local.db_sg_ids), var.ssh_cidrs) :
+    "${pair[0]}|${pair[1]}" => {
+      sg_id = local.db_sg_ids[pair[0]]
+      cidr  = pair[1]
+    }
+  }
+
+  security_group_id = each.value.sg_id
+  cidr_ipv4         = each.value.cidr
+  ip_protocol       = "tcp"
+  from_port         = 22
+  to_port           = 22
+  description       = "SSH from CIDR ${each.value.cidr}"
+}
+
+# ---------- SSH from source SGs (e.g., bastion) -> APP SGs ----------
+resource "aws_vpc_security_group_ingress_rule" "app_ssh_sg" {
+  for_each = {
+    for pair in setproduct(keys(local.app_sg_ids), var.ssh_source_security_group_ids) :
+    "${pair[0]}|${pair[1]}" => {
+      sg_id     = local.app_sg_ids[pair[0]]
+      source_sg = pair[1]
+    }
+  }
+
+  security_group_id            = each.value.sg_id
+  referenced_security_group_id = each.value.source_sg
+  ip_protocol                  = "tcp"
+  from_port                    = 22
+  to_port                      = 22
+  description                  = "SSH from SG ${each.value.source_sg}"
+}
+
+# ---------- SSH from source SGs (e.g., bastion) -> DB SGs ----------
+resource "aws_vpc_security_group_ingress_rule" "db_ssh_sg" {
+  for_each = {
+    for pair in setproduct(keys(local.db_sg_ids), var.ssh_source_security_group_ids) :
+    "${pair[0]}|${pair[1]}" => {
+      sg_id     = local.db_sg_ids[pair[0]]
+      source_sg = pair[1]
+    }
+  }
+
+  security_group_id            = each.value.sg_id
+  referenced_security_group_id = each.value.source_sg
+  ip_protocol                  = "tcp"
+  from_port                    = 22
+  to_port                      = 22
+  description                  = "SSH from SG ${each.value.source_sg}"
+}
+
+# Existing block unchanged
 module "additional_rules_for_efs" {
   for_each = merge(module.app_security_groups, module.db_security_groups)
   source   = "./modules/additional_rules_for_existing_sg"
