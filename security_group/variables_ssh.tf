@@ -1,16 +1,6 @@
-variable "ssh_cidrs" {
-  type        = list(string)
-  default     = []
-  description = "CIDR blocks allowed for SSH."
-}
+# modules/security_group/variables_ssh.tf
+# (remove ssh_cidrs / ssh_source_security_group_ids from this file)
 
-variable "ssh_source_security_group_ids" {
-  type        = list(string)
-  default     = []
-  description = "Source SG IDs allowed for SSH."
-}
-
-# Which SG(s) does THIS module instance manage?
 variable "manage_app1" {
   type        = bool
   default     = false
