@@ -55,9 +55,6 @@ module "ec2_instances" {
   ami_ID        = each.value.ami_ID
   instance_type = each.value.instance_type
 
-  # Optional: if you pass specific subnets per node
-  subnet_ID = try(each.value.subnet_ID, "")
-
   # HANA layout hints (module has defaults)
   hana_data_storage_type   = try(each.value.hana_data_storage_type, "")
   hana_logs_storage_type   = try(each.value.hana_logs_storage_type, "")
