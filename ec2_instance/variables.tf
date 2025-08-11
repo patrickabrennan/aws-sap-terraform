@@ -1,30 +1,8 @@
+# root/variables.tf
+
 variable "aws_region"  { type = string }
 variable "environment" { type = string }
 variable "vpc_id"      { type = string }
-
-variable "sap_discovery_tag" {
-  type    = string
-  default = ""
-}
-
-variable "assign_public_eip" {
-  type    = bool
-  default = true
-}
-
-variable "enable_vip_eni" {
-  type    = bool
-  default = false
-}
-variable "vip_subnet_id" {
-  type    = string
-  default = ""
-}
-
-variable "enable_vip_eip" {
-  type    = bool
-  default = false
-}
 
 variable "instances_to_create" {
   description = "Per-instance config keyed by logical name"
@@ -48,4 +26,24 @@ variable "instances_to_create" {
     hana_shared_storage_type  = optional(string)
     custom_ebs_config         = optional(any)
   }))
+}
+
+variable "sap_discovery_tag" {
+  type    = string
+  default = ""
+}
+
+variable "assign_public_eip" {
+  type    = bool
+  default = true
+}
+
+variable "enable_vip_eni" {
+  type    = bool
+  default = false
+}
+
+variable "vip_subnet_id" {
+  type    = string
+  default = ""
 }
