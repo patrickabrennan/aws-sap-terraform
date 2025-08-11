@@ -71,3 +71,38 @@ resource "null_resource" "assert_single_subnet" {
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
+
+########################################
+# Resolve a single effective KMS ARN  #
+########################################
+
+# If you provide an SSM path, we read the ARN from SSM.
+data "aws_ssm_parameter" "ebs_kms" {
+  count = var.ebs_kms_ssm_path != "" ? 1 : 0
+  name  = var.ebs_kms_ssm_path
+}
+
+# Prefer direct var, fall back to SSM value, else empty string.
+locals {
+  kms_key_arn_effective = (
+    var.kms_key_arn != ""
+    ? var.kms_key_arn
+    : try(data.aws_ssm_parameter.ebs_kms[0].value, "")
+  )
+}
+
+#############################################
+# SG IDs read from SSM for ENIs / VIP ENI  #
+#############################################
+
+# HANA node SG id (db1)
+data "aws_ssm_parameter" "ec2_hana_sg" {
+  # Expects something like: /<env>/security_group/db1/id
+  name = "/${var.environment}/security_group/db1/id"
+}
+
+# NetWeaver/app node SG id (app1)
+data "aws_ssm_parameter" "ec2_nw_sg" {
+  # Expects something like: /<env>/security_group/app1/id
+  name = "/${var.environment}/security_group/app1/id"
+}
