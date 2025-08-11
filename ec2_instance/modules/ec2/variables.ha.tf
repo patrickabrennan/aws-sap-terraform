@@ -1,32 +1,84 @@
-# Two AZs to place HA nodes; if you enable VIP ENI, keep both nodes in one AZ/subnet
-variable "ha_azs" {
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
-  description = "Two AZs used for HA pairs. For ENI VIP, use the same AZ/subnet."
-}
+############################################
+# HA / VIP / Subnet auto-selection inputs
+############################################
 
-# Fallback AZ for non-HA entries if not specified in instances_to_create
-variable "default_availability_zone" {
-  type        = string
-  default     = "us-east-1a"
-  description = "Default AZ for non-HA instances."
-}
-
-# ENI VIP controls (optional; same-AZ only)
+# Toggle VIP ENI (and optional EIP) creation
 variable "enable_vip_eni" {
-  type        = bool
-  default     = false
-  description = "Create a floating ENI per HA group (only valid when both nodes share the same subnet/AZ)."
+  type    = bool
+  default = false
 }
 
+variable "enable_vip_eip" {
+  type    = bool
+  default = false
+}
+
+# -------- Primary ENI subnet selection (for the instance) --------
+# If set, use this exact subnet ID. Otherwise, auto-select by VPC+AZ and filters.
+variable "subnet_ID" {
+  type        = string
+  default     = ""
+  description = "Optional explicit subnet ID for the instance. Leave empty to auto-select by VPC+AZ+filters."
+}
+
+# Optional narrowing filters when auto-selecting:
+variable "subnet_tag_key" {
+  type    = string
+  default = ""
+}
+
+variable "subnet_tag_value" {
+  type    = string
+  default = ""
+}
+
+# Matches the Name tag; supports wildcards like *public* or *private*
+variable "subnet_name_wildcard" {
+  type    = string
+  default = ""
+}
+
+# Behavior when more than one subnet remains:
+# - unique (default) => require exactly 1 match, else fail
+# - first            => sort IDs and pick the first deterministically
+variable "subnet_selection_mode" {
+  type        = string
+  default     = "unique"
+  validation {
+    condition     = contains(["unique", "first"], var.subnet_selection_mode)
+    error_message = "subnet_selection_mode must be 'unique' or 'first'."
+  }
+}
+
+# -------- VIP ENI subnet selection (for the floating IP NIC) --------
+# If set, use this exact subnet ID. Otherwise, auto-select by VPC+AZ and filters.
 variable "vip_subnet_id" {
   type        = string
   default     = ""
-  description = "Subnet ID for the VIP ENI; leave empty to auto-pick any subnet in var.vpc_id."
+  description = "Optional explicit subnet ID for the VIP ENI. Leave empty to auto-select by VPC+AZ+filters."
 }
 
-variable "vip_private_ip" {
+# Optional narrowing filters when auto-selecting VIP subnet:
+variable "vip_subnet_tag_key" {
+  type    = string
+  default = ""
+}
+
+variable "vip_subnet_tag_value" {
+  type    = string
+  default = ""
+}
+
+variable "vip_subnet_name_wildcard" {
+  type    = string
+  default = ""
+}
+
+variable "vip_subnet_selection_mode" {
   type        = string
-  default     = ""
-  description = "Optional fixed IP for the VIP ENI; leave empty to auto-assign."
+  default     = "unique"
+  validation {
+    condition     = contains(["unique", "first"], var.vip_subnet_selection_mode)
+    error_message = "vip_subnet_selection_mode must be 'unique' or 'first'."
+  }
 }
