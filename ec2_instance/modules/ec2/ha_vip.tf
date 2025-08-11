@@ -2,7 +2,7 @@
 # VIP ENI: subnet resolve + NIC create
 ########################################
 
-# Only evaluate list when VIP is enabled AND vip_subnet_id is empty
+# Only query when VIP is enabled AND vip_subnet_id is empty
 data "aws_subnets" "vip_candidates" {
   count = var.enable_vip_eni && var.vip_subnet_id == "" ? 1 : 0
 
@@ -36,19 +36,15 @@ data "aws_subnets" "vip_candidates" {
 }
 
 locals {
-  _vip_candidates = var.vip_subnet_id != ""
-    ? [var.vip_subnet_id]
-    : (
-        length(data.aws_subnets.vip_candidates) == 1
-        ? data.aws_subnets.vip_candidates[0].ids
-        : []
-      )
+  # Build candidates safely without multi-line ternaries
+  vip_candidates_from_filters = (var.enable_vip_eni && var.vip_subnet_id == "" && length(data.aws_subnets.vip_candidates) == 1) ? data.aws_subnets.vip_candidates[0].ids : []
+
+  _vip_candidates = (var.vip_subnet_id != "" ? [var.vip_subnet_id] : local.vip_candidates_from_filters)
 
   vip_subnet_id_effective = (
     length(local._vip_candidates) == 1
       ? local._vip_candidates[0]
-      : (
-          var.vip_subnet_selection_mode == "first" && length(local._vip_candidates) > 1
+      : (var.vip_subnet_selection_mode == "first" && length(local._vip_candidates) > 1
           ? sort(local._vip_candidates)[0]
           : ""
         )
@@ -59,7 +55,7 @@ resource "null_resource" "assert_vip_subnet" {
   count = var.enable_vip_eni ? 1 : 0
   lifecycle {
     precondition {
-      condition = local.vip_subnet_id_effective != ""
+      condition     = local.vip_subnet_id_effective != ""
       error_message = <<EOM
 VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.
 Refine selection by setting one of:
