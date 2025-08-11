@@ -68,6 +68,19 @@ variable "kms_key_arn" {
   description = "Optional KMS key ARN for EBS encryption; null = default AWS managed"
 }
 
+variable "enable_vip_eni" {
+  type        = bool
+  default     = false
+  description = "Create a VIP ENI per instance when true"
+}
+
+variable "vip_subnet_id" {
+  type        = string
+  default     = ""
+  description = "Optional explicit subnet for VIP ENI (must be in same VPC/AZ)"
+}
+
+
 
 
 
