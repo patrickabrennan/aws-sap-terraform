@@ -43,6 +43,13 @@ variable "enable_vip_eni" {
   default = false
 }
 
+variable "enable_vip_eip" {
+  type        = bool
+  default     = false
+  description = "Attach a public EIP to the VIP ENI when true"
+}
+
+
 variable "vip_subnet_id" {
   type    = string
   default = ""
