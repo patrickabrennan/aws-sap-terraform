@@ -11,6 +11,14 @@ variable "ha_azs" {
   default     = []
 }
 
+# control whether to attach an Elastic IP to each VIP ENI
+variable "enable_vip_eip" {
+  type        = bool
+  default     = true  # set to false if you don’t want public IPs on VIPs
+  description = "Attach an Elastic IP to each VIP ENI."
+}
+
+
 # Give each instance a public EIP (recommended if you SSH directly)
 variable "assign_public_eip" {
   type        = bool
