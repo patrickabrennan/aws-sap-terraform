@@ -15,12 +15,7 @@ resource "aws_instance" "this" {
     network_interface_id = aws_network_interface.this.id
   }
 
-  # IAM instance profile (string name from SSM in data.tf)
-  iam_instance_profile = (
-    var.ha
-    ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
-    : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
-  )
+  # (NO iam_instance_profile here)
 
   root_block_device {
     volume_size = tonumber(var.root_ebs_size)
