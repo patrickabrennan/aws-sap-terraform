@@ -56,9 +56,21 @@ variable "vip_subnet_id" {
 }
 
 # ---- Subnet narrowing for instances ----
-variable "subnet_tag_key"       { type = string, default = "" }
-variable "subnet_tag_value"     { type = string, default = "" }
-variable "subnet_name_wildcard" { type = string, default = "" }
+variable "subnet_tag_key" { 
+  type = string 
+  default = "" 
+}
+
+variable "subnet_tag_value" { 
+  type = string 
+  default = "" 
+}
+
+variable "subnet_name_wildcard" {
+  type = string 
+  default = "" 
+}
+
 variable "subnet_selection_mode" {
   type    = string
   default = "unique" # or "first"
@@ -69,9 +81,21 @@ variable "subnet_selection_mode" {
 }
 
 # ---- Subnet narrowing for VIP ENI (HA) ----
-variable "vip_subnet_tag_key"       { type = string, default = "" }
-variable "vip_subnet_tag_value"     { type = string, default = "" }
-variable "vip_subnet_name_wildcard" { type = string, default = "" }
+variable "vip_subnet_tag_key" {
+  type = string 
+  default = "" 
+}
+
+variable "vip_subnet_tag_value" {
+  type = string
+  default = "" 
+}
+
+variable "vip_subnet_name_wildcard" {
+  type = string 
+  default = "" 
+}
+
 variable "vip_subnet_selection_mode" {
   type    = string
   default = "unique" # or "first"
