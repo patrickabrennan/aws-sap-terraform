@@ -25,8 +25,11 @@ resource "aws_instance" "this" {
   root_block_device {
     volume_size = tonumber(var.root_ebs_size)
     volume_type = "gp3"
-    encrypted   = true
-    kms_key_id  = var.kms_key_arn
+    encrypted  = local.kms_key_arn_effective != "" ? true : null
+    kms_key_id = local.kms_key_arn_effective != "" ? local.kms_key_arn_effective : null
+
+    #encrypted   = true
+    #kms_key_id  = var.kms_key_arn
   }
 
   tags = merge(var.ec2_tags, {
