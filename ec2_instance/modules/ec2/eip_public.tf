@@ -1,4 +1,7 @@
-# Allocate one EIP per instance when enabled
+########################################
+# modules/ec2/eip_public.tf
+########################################
+
 resource "aws_eip" "public" {
   count  = var.assign_public_eip ? 1 : 0
   domain = "vpc"
@@ -9,9 +12,11 @@ resource "aws_eip" "public" {
   })
 }
 
-# Associate that EIP to the instance's primary ENI
 resource "aws_eip_association" "public" {
   count                = var.assign_public_eip ? 1 : 0
   allocation_id        = aws_eip.public[0].allocation_id
   network_interface_id = aws_network_interface.this.id
+
+  # Wait for instance/ENI to be ready, prevents IncorrectInstanceState
+  depends_on = [aws_instance.this]
 }
