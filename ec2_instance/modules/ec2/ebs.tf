@@ -1,20 +1,35 @@
 ########################################
-# EBS Volumes + Attachments (HA-safe)
+# modules/ec2/ebs.tf  (REPLACE)
 ########################################
+# Requires:
+# - local.all_disks  (list of disk objects from ebs_expansion.tf)
+# - data.aws_subnet.effective (for AZ)
+# - data.aws_ssm_parameter.ebs_kms (optional KMS)
 
-# Expect a list of disks in local.all_disks (built by your ebs_expansion.tf)
-# Each disk object should include keys: name, size (or volume_size), type, device, disk_index
-
-# Build a per-instance unique key so volumes never collide across nodes
 locals {
+  # Make sure each disk has a name and index; fall back gracefully if fields are missing
+  all_disks_list = tolist(local.all_disks)
+
+  normalized_disks = [
+    for idx, d in local.all_disks_list : merge(d, {
+      name       = coalesce(
+                     try(tostring(d.name), null),
+                     try(tostring(d.label), null),
+                     try(tostring(d.volume_name), null),
+                     try(tostring(d.mount), null),
+                     "disk"
+                   )
+      disk_index = try(d.disk_index, idx)
+    })
+  ]
+
+  # Unique key per *instance* and *disk* so volumes never collide across -a/-b
   all_disks_map = {
-    for d in local.all_disks :
-    # key example: sapd01cs-a|002|hana-logs
-    "${var.hostname}|${format("%03d", try(d.disk_index, 0))}|${d.name}" => d
+    for d in local.normalized_disks :
+    "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
   }
 }
 
-# Create volumes in the instance's subnet AZ
 resource "aws_ebs_volume" "all_volumes" {
   for_each          = local.all_disks_map
   availability_zone = data.aws_subnet.effective.availability_zone
@@ -26,23 +41,21 @@ resource "aws_ebs_volume" "all_volumes" {
   kms_key_id = try(data.aws_ssm_parameter.ebs_kms.value, null)
 
   tags = merge(var.ec2_tags, {
-    Name        = "${var.hostname}-${each.value.name}-${format("%03d", try(each.value.disk_index, 0))}"
+    Name        = "${var.hostname}-${each.value.name}-${format("%03d", each.value.disk_index)}"
     environment = var.environment
     role        = "data"
   })
 }
 
-# Attach with robust ordering and timeouts to avoid IncorrectState
 resource "aws_volume_attachment" "all_attachments" {
   for_each    = local.all_disks_map
   device_name = each.value.device
   volume_id   = aws_ebs_volume.all_volumes[each.key].id
   instance_id = aws_instance.this.id
 
-  # be resilient on re-plans / toggles
+  # Be resilient during re-plans / HA toggles
   force_detach = true
 
-  # make sure instance + volumes are ready
   depends_on = [
     aws_instance.this,
     aws_ebs_volume.all_volumes
@@ -51,5 +64,13 @@ resource "aws_volume_attachment" "all_attachments" {
   timeouts {
     create = "15m"
     delete = "15m"
+  }
+
+  # Optional guard if you're unsure device is always set:
+  lifecycle {
+    precondition {
+      condition     = can(each.value.device) && each.value.device != ""
+      error_message = "Device name not set for disk ${each.key}"
+    }
   }
 }
