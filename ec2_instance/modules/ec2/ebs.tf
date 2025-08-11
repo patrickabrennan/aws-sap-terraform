@@ -1,19 +1,20 @@
 ########################################
-# modules/ec2/ebs.tf  (REPLACE)
+# modules/ec2/ebs.tf
+# Consumes local.normalized_disks and attaches safely.
 ########################################
-# Expects:
-# - local.normalized_disks from ebs_expansion.tf (with: name, disk_index, size, type; device optional)
-# - data.aws_subnet.effective (for AZ)
-# - data.aws_ssm_parameter.ebs_kms (optional KMS)
+# Requires:
+# - local.normalized_disks (from ebs_expansion.tf)
+# - data.aws_subnet.effective (provides availability_zone)
+# - data.aws_ssm_parameter.ebs_kms (optional; omit if you don't use it)
 
 locals {
-  # Unique key per instance+disk so volumes never collide across -a/-b nodes
+  # Unique key per instance+disk so -a/-b nodes never collide
   disks_map = {
     for d in local.normalized_disks :
     "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
   }
 
-  # Letters for /dev/xvd? device fallback (0 -> f, 1 -> g, ...)
+  # Letters for /dev/xvd? fallback: f,g,h,... (Nitro maps to nvme on guest)
   device_letters = [
     "f","g","h","i","j","k","l","m","n","o","p",
     "q","r","s","t","u","v","w","x","y","z",
@@ -30,14 +31,14 @@ resource "aws_ebs_volume" "all_volumes" {
   encrypted  = true
   kms_key_id = try(data.aws_ssm_parameter.ebs_kms.value, null)
 
-  # Only set IOPS when supported and >0 (gp3/io1/io2); otherwise omit.
+  # Set IOPS only when supported and > 0 (gp3, io1, io2)
   iops = (
     contains(["gp3","io1","io2"], each.value.type) && try(tonumber(each.value.iops), 0) > 0
     ? tonumber(each.value.iops)
     : null
   )
 
-  # Only set throughput for gp3 and when >0; otherwise omit.
+  # Set throughput only for gp3 and > 0
   throughput = (
     each.value.type == "gp3" && try(tonumber(each.value.throughput), 0) > 0
     ? tonumber(each.value.throughput)
@@ -54,10 +55,10 @@ resource "aws_ebs_volume" "all_volumes" {
 resource "aws_volume_attachment" "all_attachments" {
   for_each = local.disks_map
 
-  # Use provided device if present; otherwise pick one based on disk_index.
+  # Use provided device name if set; otherwise pick a sequential fallback
   device_name = coalesce(
     try(each.value.device, null),
-    "/dev/xvd${local.device_letters[try(each.value.disk_index, 0)]}"
+    "/dev/xvd${local.device_letters[(try(each.value.disk_index, 0)) % length(local.device_letters)]}"
   )
 
   volume_id   = aws_ebs_volume.all_volumes[each.key].id
