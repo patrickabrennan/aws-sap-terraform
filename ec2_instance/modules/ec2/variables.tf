@@ -94,3 +94,9 @@ variable "custom_ebs_config" {
   type    = list(map(any))
   default = []
 }
+
+variable "assign_public_eip" {
+  type        = bool
+  default     = false
+  description = "Attach an Elastic IP to the instance primary ENI for public access."
+}
