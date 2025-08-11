@@ -1,4 +1,5 @@
 ########################################
+# modules/ec2/ec2.tf
 # EC2 instance using the ENI from eni.tf
 ########################################
 
@@ -29,13 +30,12 @@ resource "aws_instance" "this" {
   }
 
   tags = merge(var.ec2_tags, {
-    Name        = var.hostname
-    environment = var.environment
-    domain      = var.domain
-    app_code    = var.application_code
-    app_sid     = var.application_SID
-    ha          = tostring(var.ha)
-    sap_discovery = var.environment != "" ? var.environment : null
+    Name         = var.hostname
+    environment  = var.environment
+    domain       = var.domain
+    app_code     = var.application_code
+    app_sid      = var.application_SID
+    ha           = tostring(var.ha)
   })
 
   lifecycle {
