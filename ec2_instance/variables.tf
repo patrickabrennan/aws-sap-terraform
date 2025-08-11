@@ -1,100 +1,40 @@
-variable "aws_region" {
-  type        = string
-  description = "AWS region"
-}
-
-variable "environment" {
-  type        = string
-  description = "Environment name used in SSM param paths and tags (e.g., dev)"
-}
-
-variable "vpc_id" {
-  type        = string
-  description = "VPC ID where instances will be created"
-}
+variable "aws_region"  { type = string }
+variable "environment" { type = string }
+variable "vpc_id"      { type = string }
 
 variable "instances_to_create" {
-  description = "Map of instance configs keyed by logical name (e.g., sapd01db1)"
+  description = "Map of instance configs keyed by logical name"
   type        = map(any)
 }
 
-variable "assign_public_eip" {
-  type        = bool
-  default     = true
-  description = "Attach an Elastic IP to each instance's primary ENI"
-}
-
-
-
-
-
-
-
-/*
-variable "aws_region" {
-  description = "AWS region for this workspace"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment name (dev, qa, prod)"
-  type        = string
-}
-
-# Only add this if you *must* keep a leftover vpc_id var from TFC. Otherwise, delete it in TFC (step 3).
-variable "vpc_id" {
-  description = "Deprecated/unused. Kept only to silence org-level tfvars."
+# already used by your tfvars
+variable "sap_discovery_tag" {
   type        = string
   default     = ""
+  description = "Optional tag to mark SAP-discoverable resources"
 }
 
-variable "sap_discovery_tag" {
-  description = "Tag key that identifies sap relevant objects"
-  type        = string
-}
-
-# Optional floating ENI VIP (same-AZ only). Leave false for cross-AZ HA.
+# VIP controls (your tfvars referenced these)
 variable "enable_vip_eni" {
   type        = bool
   default     = false
-  description = "Create a floating ENI per HA group (only valid when both nodes share the same subnet/AZ)."
 }
-
-# If you enable the VIP ENI, you can pin it to a specific subnet (same AZ as active node)
 variable "vip_subnet_id" {
   type        = string
   default     = ""
-  description = "Subnet ID for the VIP ENI; leave empty to auto-pick from var.vpc_id."
 }
 
-# Optional fixed private IP for the VIP ENI
-variable "vip_private_ip" {
-  type        = string
-  default     = ""
-  description = "Fixed private IP for the VIP ENI; leave empty to auto-assign."
+# HA placement (if you already have these, keep your versions)
+variable "default_availability_zone" {
+  type = string
+}
+variable "ha_azs" {
+  type    = list(string)
+  default = []
 }
 
-variable "instances_to_create" {
-  description = "Map of instances to create"
-  type = map(object({
-    availability_zone        = string
-    custom_ebs_config = optional(list(map(any)), [])
-    domain                   = string
-    application_code         = string
-    application_SID          = string
-    ha                       = bool
-    ami_ID                   = string
-    subnet_ID                = optional(string, "")
-    key_name                 = string
-    monitoring               = bool
-    root_ebs_size            = number
-    ec2_tags                 = map(any)
-    instance_type            = string
-    private_ip               = optional(string, "")
-    hana_data_storage_type   = optional(string, "")
-    hana_logs_storage_type   = optional(string, "")
-    hana_backup_storage_type = optional(string, "")
-    hana_shared_storage_type = optional(string, "")
-  }))
+# Public EIP per instance (used by module)
+variable "assign_public_eip" {
+  type    = bool
+  default = true
 }
-*/
