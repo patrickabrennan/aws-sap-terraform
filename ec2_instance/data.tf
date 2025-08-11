@@ -1,3 +1,17 @@
+# Security group IDs published by your security_group workspace via SSM.
+# Adjust the parameter names if your path differs.
+data "aws_ssm_parameter" "app1_sg" {
+  name = "/${var.environment}/security_group/app1/id"
+}
+
+data "aws_ssm_parameter" "db1_sg" {
+  name = "/${var.environment}/security_group/db1/id"
+}
+
+
+
+
+/*
 data "aws_ssm_parameter" "ec2_hana_sg" {
   # Path produced by the security_group workspace:
   # /<env>/security_group/<sg_name>/id
@@ -51,3 +65,4 @@ locals {
     if s.map_public_ip_on_launch == true
   ]
 }
+*/
