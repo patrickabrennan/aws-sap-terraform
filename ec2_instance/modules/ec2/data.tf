@@ -1,6 +1,22 @@
-# -------------------------------
-# Primary ENI subnet auto-select
-# -------------------------------
+##############################################
+# Module data sources + PRIMARY subnet resolve
+##############################################
+
+# (Keep these if you already use them; safe to remove if unused)
+data "aws_ssm_parameter" "ec2_ha_instance_profile" {
+  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
+}
+data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
+  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
+}
+data "aws_ssm_parameter" "ec2_hana_sg" {
+  name = "/${var.environment}/security_group/db1/id"
+}
+data "aws_ssm_parameter" "ec2_nw_sg" {
+  name = "/${var.environment}/security_group/app1/id"
+}
+
+# When subnet_ID is empty, enumerate subnets in VPC+AZ, with optional filters
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -8,12 +24,13 @@ data "aws_subnets" "by_filters" {
     name   = "vpc-id"
     values = [var.vpc_id]
   }
+
   filter {
     name   = "availability-zone"
     values = [var.availability_zone]
   }
 
-  # Optional tag key/value filter (exact match)
+  # Optional exact tag filter
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -22,7 +39,7 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name wildcard (EC2 supports '*' wildcards in filter values)
+  # Optional Name wildcard (supports '*')
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -33,7 +50,7 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  # Candidate IDs when not explicitly provided
+  # Candidates from filters (or the explicitly provided subnet_ID)
   _primary_candidates = var.subnet_ID != ""
     ? [var.subnet_ID]
     : (
@@ -42,6 +59,7 @@ locals {
         : []
       )
 
+  # Pick one deterministically (mode="first") or require exactly one (mode="unique")
   subnet_id_effective = (
     length(local._primary_candidates) == 1
       ? local._primary_candidates[0]
@@ -59,15 +77,17 @@ resource "null_resource" "assert_single_subnet" {
       condition = local.subnet_id_effective != ""
       error_message = <<EOM
 Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
-Try one of:
- - set var.subnet_tag_key/var.subnet_tag_value to narrow by tag
- - set var.subnet_name_wildcard (e.g. "*public*" or "*private*")
- - or set var.subnet_selection_mode = "first" to pick the first after sorting IDs
+Refine selection by setting one of:
+ - subnet_tag_key + subnet_tag_value       (e.g., Tier=app)
+ - subnet_name_wildcard                    (e.g., "*public*" or "*private*")
+Or allow auto-pick by setting:
+ - subnet_selection_mode = "first"
 EOM
     }
   }
 }
 
+# Final resolved subnet used by ENI/Instance
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
