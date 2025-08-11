@@ -67,3 +67,10 @@ variable "kms_key_arn" {
   default     = null
   description = "Optional KMS key ARN for EBS encryption; null = default AWS managed"
 }
+
+variable "enable_vip_eip" {
+  type        = bool
+  default     = false
+  description = "Attach a public EIP to the VIP ENI when true"
+}
+
