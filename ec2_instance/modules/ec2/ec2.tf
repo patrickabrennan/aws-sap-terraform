@@ -1,4 +1,8 @@
-# EC2 instance that uses the ENI above
+########################################
+# modules/ec2/ec2.tf
+# EC2 instance using the ENI from eni.tf
+########################################
+
 resource "aws_instance" "this" {
   ami           = var.ami_ID
   instance_type = var.instance_type
@@ -11,7 +15,7 @@ resource "aws_instance" "this" {
     network_interface_id = aws_network_interface.this.id
   }
 
-  # IAM instance profile selected by HA flag (value read from SSM in data.tf)
+  # IAM instance profile (string name from SSM in data.tf)
   iam_instance_profile = (
     var.ha
     ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
