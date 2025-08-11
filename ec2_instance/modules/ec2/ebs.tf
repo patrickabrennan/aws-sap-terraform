@@ -23,8 +23,12 @@ resource "aws_ebs_volume" "all_volumes" {
 
   size       = tonumber(each.value.size)
   type       = lower(each.value.type)
-  encrypted  = true
-  kms_key_id = var.kms_key_arn
+  # Encrypt only when we actually have a KMS key ARN
+  encrypted  = local.kms_key_arn_effective != "" ? true : null
+  kms_key_id = local.kms_key_arn_effective != "" ? local.kms_key_arn_effective : null
+
+  #encrypted  = true
+  #kms_key_id = var.kms_key_arn
 
   # Only set IOPS when supported and > 0 (gp3, io1, io2)
   iops = (
