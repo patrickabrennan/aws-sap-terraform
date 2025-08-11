@@ -1,65 +1,97 @@
-# --- Subnet auto-selection controls (primary ENI) ---
-variable "subnet_ID" {
-  type        = string
-  default     = ""
-  description = "If empty, auto-select by VPC+AZ (+ optional tag/name filters)."
+# Core instance/module inputs (NO subnet/VIP vars here)
+
+variable "aws_region" {
+  type = string
 }
 
-variable "subnet_tag_key" {
-  type        = string
-  default     = ""
-  description = "Optional tag key to filter subnets (e.g., 'Tier')."
+variable "environment" {
+  type = string
 }
 
-variable "subnet_tag_value" {
-  type        = string
-  default     = ""
-  description = "Optional tag value to filter subnets (e.g., 'app')."
+variable "hostname" {
+  type = string
 }
 
-variable "subnet_name_wildcard" {
-  type        = string
-  default     = ""
-  description = "Optional wildcard for tag:Name filter (e.g., '*public*')."
+variable "domain" {
+  type = string
 }
 
-variable "subnet_selection_mode" {
-  type        = string
-  default     = "unique"
-  description = "'unique' requires exactly one match; 'first' picks the first after sorting IDs."
-  validation {
-    condition     = contains(["unique","first"], var.subnet_selection_mode)
-    error_message = "subnet_selection_mode must be 'unique' or 'first'."
-  }
+variable "private_ip" {
+  type    = string
+  default = null
 }
 
-# --- VIP ENI auto-selection controls ---
-variable "vip_subnet_id" {
-  type        = string
-  default     = ""
-  description = "If empty and VIP enabled, auto-select by VPC+AZ (+ optional tag/name filters)."
+variable "application_code" {
+  type = string
 }
 
-variable "vip_subnet_tag_key" {
-  type        = string
-  default     = ""
+variable "application_SID" {
+  type = string
 }
 
-variable "vip_subnet_tag_value" {
-  type        = string
-  default     = ""
+variable "ha" {
+  type = bool
 }
 
-variable "vip_subnet_name_wildcard" {
-  type        = string
-  default     = ""
+variable "ami_ID" {
+  type = string
 }
 
-variable "vip_subnet_selection_mode" {
-  type        = string
-  default     = "unique"
-  validation {
-    condition     = contains(["unique","first"], var.vip_subnet_selection_mode)
-    error_message = "vip_subnet_selection_mode must be 'unique' or 'first'."
-  }
+variable "instance_type" {
+  type = string
+}
+
+variable "hana_data_storage_type" {
+  type    = string
+  default = ""
+}
+
+variable "hana_logs_storage_type" {
+  type    = string
+  default = ""
+}
+
+variable "hana_backup_storage_type" {
+  type    = string
+  default = ""
+}
+
+variable "hana_shared_storage_type" {
+  type    = string
+  default = ""
+}
+
+variable "custom_ebs_config" {
+  type    = any
+  default = null
+}
+
+variable "key_name" {
+  type = string
+}
+
+variable "monitoring" {
+  type = bool
+}
+
+variable "root_ebs_size" {
+  type = string
+}
+
+variable "ec2_tags" {
+  type = map(any)
+}
+
+variable "availability_zone" {
+  type = string
+}
+
+variable "vpc_id" {
+  type = string
+}
+
+# Used for primary/VIP ENI security groups
+variable "security_group_ids" {
+  type    = list(string)
+  default = []
 }
