@@ -95,3 +95,10 @@ variable "security_group_ids" {
   type    = list(string)
   default = []
 }
+
+variable "assign_public_eip" {
+  description = "Attach a public EIP to the instance's primary ENI"
+  type        = bool
+  default     = false
+}
+
