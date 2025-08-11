@@ -1,5 +1,4 @@
 ########################################
-# modules/ec2/ec2.tf
 # EC2 instance using the ENI from eni.tf
 ########################################
 
@@ -15,7 +14,12 @@ resource "aws_instance" "this" {
     network_interface_id = aws_network_interface.this.id
   }
 
-  # NOTE: do NOT put iam_instance_profile here
+  # IAM instance profile (string name from SSM in data.tf)
+  iam_instance_profile = (
+    var.ha
+    ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
+    : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
+  )
 
   root_block_device {
     volume_size = tonumber(var.root_ebs_size)
@@ -31,6 +35,7 @@ resource "aws_instance" "this" {
     app_code    = var.application_code
     app_sid     = var.application_SID
     ha          = tostring(var.ha)
+    sap_discovery = var.environment != "" ? var.environment : null
   })
 
   lifecycle {
