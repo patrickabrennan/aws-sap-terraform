@@ -1,27 +1,17 @@
-resource "aws_network_interface" "this" {
-  subnet_id         = data.aws_subnet.effective.id
-  security_groups   = var.security_group_ids
-  source_dest_check = lower(var.application_code) == "hana" ? false : true
-
-  tags = merge(var.ec2_tags, {
-    Name        = "${var.hostname}-eni0"
-    environment = var.environment
-  })
-}
-
+# EC2 instance that uses the ENI above
 resource "aws_instance" "this" {
   ami           = var.ami_ID
   instance_type = var.instance_type
   key_name      = var.key_name
   monitoring    = var.monitoring
 
-  # attach the ENI we created
+  # attach the ENI created in eni.tf
   network_interface {
     device_index         = 0
     network_interface_id = aws_network_interface.this.id
   }
 
-  # IAM instance profile (string name from SSM)
+  # IAM instance profile selected by HA flag (value read from SSM in data.tf)
   iam_instance_profile = (
     var.ha
     ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
