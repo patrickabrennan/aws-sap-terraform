@@ -1,13 +1,9 @@
-# Instance profile names from SSM
-data "aws_ssm_parameter" "ec2_ha_instance_profile" {
-  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
-}
-data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
-  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
-}
-
-# Pick exactly ONE subnet in the given VPC and AZ
+# -------------------------------
+# Primary ENI subnet auto-select
+# -------------------------------
 data "aws_subnets" "by_filters" {
+  count = var.subnet_ID == "" ? 1 : 0
+
   filter {
     name   = "vpc-id"
     values = [var.vpc_id]
@@ -16,150 +12,62 @@ data "aws_subnets" "by_filters" {
     name   = "availability-zone"
     values = [var.availability_zone]
   }
-}
 
-locals {
-  subnet_id_effective = (
-    length(data.aws_subnets.by_filters.ids) == 1
-    ? data.aws_subnets.by_filters.ids[0]
-    : ""
-  )
-}
-
-resource "null_resource" "assert_single_subnet" {
-  lifecycle {
-    precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = "Subnet lookup did not resolve to exactly one subnet in ${var.vpc_id} / ${var.availability_zone}. Refine your subnets."
-    }
-  }
-}
-
-data "aws_subnet" "effective" {
-  id = local.subnet_id_effective
-}
-
-
-
-
-
-
-
-
-
-/*
-# Pick exactly ONE subnet in the given VPC and AZ
-data "aws_subnets" "by_filters" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-  filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-}
-
-locals {
-  # Ensure exactly one subnet (adjust your VPC setup/tags if this fails)
-  subnet_id_effective = (
-    length(data.aws_subnets.by_filters.ids) == 1
-    ? data.aws_subnets.by_filters.ids[0]
-    : ""
-  )
-}
-
-resource "null_resource" "assert_single_subnet" {
-  lifecycle {
-    precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = "Subnet lookup did not resolve to exactly one subnet in ${var.vpc_id} / ${var.availability_zone}. Refine your subnets."
-    }
-  }
-}
-
-data "aws_subnet" "effective" {
-  id = local.subnet_id_effective
-}
-*/
-
-
-
-
-
-/*
-# --- SSM parameters used by the module ---
-
-data "aws_ssm_parameter" "ebs_kms" {
-  name = "/${var.environment}/kms/ebs/arn"
-}
-
-data "aws_ssm_parameter" "ec2_ha_instance_profile" {
-  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
-}
-
-data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
-  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
-}
-
-data "aws_ssm_parameter" "ec2_hana_sg" {
-  name = "/${var.environment}/security_group/db1/id"
-}
-
-data "aws_ssm_parameter" "ec2_nw_sg" {
-  name = "/${var.environment}/security_group/app1/id"
-}
-
-# --- Subnet discovery (no subnet_ID var) ---
-# Require vpc_id + availability_zone + tag filters to resolve exactly one subnet.
-
-data "aws_subnets" "by_filters" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-
-  filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-
-  # One filter per tag key/value provided to the module.
+  # Optional tag key/value filter (exact match)
   dynamic "filter" {
-    for_each = var.subnet_tag_filters
+    for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
-      name   = "tag:${filter.key}"
-      values = [filter.value]
+      name   = "tag:${var.subnet_tag_key}"
+      values = [var.subnet_tag_value]
+    }
+  }
+
+  # Optional Name wildcard (EC2 supports '*' wildcards in filter values)
+  dynamic "filter" {
+    for_each = (var.subnet_name_wildcard != "") ? [1] : []
+    content {
+      name   = "tag:Name"
+      values = [var.subnet_name_wildcard]
     }
   }
 }
 
-#locals {
-#  subnet_id_effective = length(data.aws_subnets.by_filters.ids) == 1
-#    ? data.aws_subnets.by_filters.ids[0]
-#    : ""
-#}
 locals {
+  # Candidate IDs when not explicitly provided
+  _primary_candidates = var.subnet_ID != ""
+    ? [var.subnet_ID]
+    : (
+        length(data.aws_subnets.by_filters) == 1
+        ? data.aws_subnets.by_filters[0].ids
+        : []
+      )
+
   subnet_id_effective = (
-    length(data.aws_subnets.by_filters.ids) == 1
-    ? data.aws_subnets.by_filters.ids[0]
-    : ""
+    length(local._primary_candidates) == 1
+      ? local._primary_candidates[0]
+      : (
+          var.subnet_selection_mode == "first" && length(local._primary_candidates) > 1
+          ? sort(local._primary_candidates)[0]
+          : ""
+        )
   )
 }
 
-
-# Fail fast if the lookup is not unique (0 or >1).
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = "Subnet lookup did not resolve to exactly one subnet. Check availability_zone and subnet_tag_filters."
+      condition = local.subnet_id_effective != ""
+      error_message = <<EOM
+Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
+Try one of:
+ - set var.subnet_tag_key/var.subnet_tag_value to narrow by tag
+ - set var.subnet_name_wildcard (e.g. "*public*" or "*private*")
+ - or set var.subnet_selection_mode = "first" to pick the first after sorting IDs
+EOM
     }
   }
 }
 
-# Resolved subnet object (used for AZ, etc.).
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
-*/
