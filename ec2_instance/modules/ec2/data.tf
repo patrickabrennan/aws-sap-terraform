@@ -1,3 +1,53 @@
+# Instance profile names from SSM
+data "aws_ssm_parameter" "ec2_ha_instance_profile" {
+  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
+}
+data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
+  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
+}
+
+# Pick exactly ONE subnet in the given VPC and AZ
+data "aws_subnets" "by_filters" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+}
+
+locals {
+  subnet_id_effective = (
+    length(data.aws_subnets.by_filters.ids) == 1
+    ? data.aws_subnets.by_filters.ids[0]
+    : ""
+  )
+}
+
+resource "null_resource" "assert_single_subnet" {
+  lifecycle {
+    precondition {
+      condition     = local.subnet_id_effective != ""
+      error_message = "Subnet lookup did not resolve to exactly one subnet in ${var.vpc_id} / ${var.availability_zone}. Refine your subnets."
+    }
+  }
+}
+
+data "aws_subnet" "effective" {
+  id = local.subnet_id_effective
+}
+
+
+
+
+
+
+
+
+
+/*
 # Pick exactly ONE subnet in the given VPC and AZ
 data "aws_subnets" "by_filters" {
   filter {
@@ -31,7 +81,7 @@ resource "null_resource" "assert_single_subnet" {
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
-
+*/
 
 
 
