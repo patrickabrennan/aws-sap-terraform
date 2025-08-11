@@ -2,7 +2,7 @@
 # VIP public EIP (module scope)
 ########################################
 
-# Allocate an EIP only if we created a VIP ENI and EIP is enabled
+# Toggle-controlled EIP for the VIP ENI
 resource "aws_eip" "vip" {
   count  = var.enable_vip_eni && var.enable_vip_eip ? 1 : 0
   domain = "vpc"
@@ -13,12 +13,9 @@ resource "aws_eip" "vip" {
   })
 }
 
-# Associate that EIP to the VIP ENI
 resource "aws_eip_association" "vip" {
   count = var.enable_vip_eni && var.enable_vip_eip ? 1 : 0
 
   allocation_id        = aws_eip.vip[0].id
   network_interface_id = aws_network_interface.ha_vip[0].id
-
-  depends_on = [aws_network_interface.ha_vip]
 }
