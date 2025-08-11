@@ -1,3 +1,5 @@
+default_availability_zone = "us-east-1a"
+ha_azs                     = ["us-east-1a", "us-east-1b"]
 enable_vip_eni = true
 instances_to_create = {
     sapd01db1 = {
