@@ -1,3 +1,43 @@
+# Pick exactly ONE subnet in the given VPC and AZ
+data "aws_subnets" "by_filters" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+}
+
+locals {
+  # Ensure exactly one subnet (adjust your VPC setup/tags if this fails)
+  subnet_id_effective = (
+    length(data.aws_subnets.by_filters.ids) == 1
+    ? data.aws_subnets.by_filters.ids[0]
+    : ""
+  )
+}
+
+resource "null_resource" "assert_single_subnet" {
+  lifecycle {
+    precondition {
+      condition     = local.subnet_id_effective != ""
+      error_message = "Subnet lookup did not resolve to exactly one subnet in ${var.vpc_id} / ${var.availability_zone}. Refine your subnets."
+    }
+  }
+}
+
+data "aws_subnet" "effective" {
+  id = local.subnet_id_effective
+}
+
+
+
+
+
+
+/*
 # --- SSM parameters used by the module ---
 
 data "aws_ssm_parameter" "ebs_kms" {
@@ -72,3 +112,4 @@ resource "null_resource" "assert_single_subnet" {
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
+*/
