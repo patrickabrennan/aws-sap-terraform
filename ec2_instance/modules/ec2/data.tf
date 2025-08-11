@@ -89,3 +89,28 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
   # Expects something like: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
+
+###########################################
+# Resolve IAM Instance Profile name via SSM
+###########################################
+
+# HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2-ha/name
+data "aws_ssm_parameter" "ec2_ha_instance_profile" {
+  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
+}
+
+# Non-HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2/name
+data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
+  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
+}
+
+locals {
+  iam_instance_profile_name_effective = (
+    var.iam_instance_profile_name_override != ""
+      ? var.iam_instance_profile_name_override
+      : (var.ha
+          ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
+          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
+        )
+  )
+}
