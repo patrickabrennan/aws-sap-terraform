@@ -1,9 +1,9 @@
 ########################################
-# Associate IAM instance profile AFTER launch
+# Associate IAM Instance Profile AFTER launch
 ########################################
 
 resource "aws_iam_instance_profile_association" "this" {
-  instance_id        = aws_instance.this.id
+  instance_id = aws_instance.this.id
   iam_instance_profile = (
     var.ha
     ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
