@@ -119,3 +119,11 @@ variable "ebs_kms_ssm_path" {
   default = ""
 }
 
+# Optional override: if set, we use this name directly and skip SSM lookups.
+variable "iam_instance_profile_name_override" {
+  type        = string
+  default     = ""
+  description = "Explicit IAM instance profile name to attach to the EC2 instance. If empty, resolve from SSM by HA/non-HA."
+}
+
+
