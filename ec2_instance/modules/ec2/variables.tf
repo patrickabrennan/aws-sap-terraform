@@ -119,10 +119,3 @@ variable "ebs_kms_ssm_path" {
   default = ""
 }
 
-# Whether to attach a public EIP to the instance’s primary ENI (used by eip_public.tf)
-variable "assign_public_eip" {
-  type    = bool
-  default = false
-}
-
-
