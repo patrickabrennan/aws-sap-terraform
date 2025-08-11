@@ -102,3 +102,27 @@ variable "assign_public_eip" {
   default     = false
 }
 
+############################
+# KMS + public EIP flags  #
+############################
+
+# Direct KMS key ARN (optional). If empty, we’ll try SSM below.
+variable "kms_key_arn" {
+  type    = string
+  default = ""
+}
+
+# SSM Parameter path that contains the KMS key ARN (optional).
+# Example: "/${var.environment}/kms/ebs/arn"
+variable "ebs_kms_ssm_path" {
+  type    = string
+  default = ""
+}
+
+# Whether to attach a public EIP to the instance’s primary ENI (used by eip_public.tf)
+variable "assign_public_eip" {
+  type    = bool
+  default = false
+}
+
+
