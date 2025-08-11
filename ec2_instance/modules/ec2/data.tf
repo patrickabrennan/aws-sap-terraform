@@ -76,11 +76,7 @@ data "aws_subnet" "effective" {
 # Resolve a single effective KMS ARN  #
 ########################################
 
-# If you provide an SSM path, we read the ARN from SSM.
-data "aws_ssm_parameter" "ebs_kms" {
-  count = var.ebs_kms_ssm_path != "" ? 1 : 0
-  name  = var.ebs_kms_ssm_path
-}
+
 
 # Prefer direct var, fall back to SSM value, else empty string.
 locals {
