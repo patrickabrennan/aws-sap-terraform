@@ -1,4 +1,37 @@
 variable "aws_region" {
+  type        = string
+  description = "AWS region"
+}
+
+variable "environment" {
+  type        = string
+  description = "Environment name used in SSM param paths and tags (e.g., dev)"
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID where instances will be created"
+}
+
+variable "instances_to_create" {
+  description = "Map of instance configs keyed by logical name (e.g., sapd01db1)"
+  type        = map(any)
+}
+
+variable "assign_public_eip" {
+  type        = bool
+  default     = true
+  description = "Attach an Elastic IP to each instance's primary ENI"
+}
+
+
+
+
+
+
+
+/*
+variable "aws_region" {
   description = "AWS region for this workspace"
   type        = string
 }
@@ -64,3 +97,4 @@ variable "instances_to_create" {
     hana_shared_storage_type = optional(string, "")
   }))
 }
+*/
