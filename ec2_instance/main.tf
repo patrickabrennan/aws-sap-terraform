@@ -46,6 +46,8 @@ module "ec2_instances" {
 
   enable_vip_eni = var.enable_vip_eni
   vip_subnet_id  = var.vip_subnet_id
+  enable_vip_eip = var.enable_vip_eip
+}
 }
 
 
