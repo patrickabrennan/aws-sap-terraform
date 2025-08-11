@@ -1,23 +1,18 @@
+# Primary ENI (keep ENI here; do NOT also define it in ec2.tf)
 resource "aws_network_interface" "this" {
-  subnet_id = data.aws_subnet.effective.id
-
-  # If you prefer to allow optional static IP:
-  dynamic "private_ips" {
-    for_each = var.private_ip == null ? [] : [var.private_ip]
-    content {
-      # provider requires a list; Terraform 1.6+ supports private_ip on ENI resource; keep dynamic list for compat
-    }
-  }
-
+  subnet_id         = data.aws_subnet.effective.id
   security_groups   = var.security_group_ids
   source_dest_check = lower(var.application_code) == "hana" ? false : true
+
+  # (Optional static IP support)
+  # If you want to force a specific IP, uncomment the next line.
+  # private_ips = var.private_ip == null ? null : [var.private_ip]
 
   tags = merge(var.ec2_tags, {
     Name        = "${var.hostname}-eni0"
     environment = var.environment
   })
 }
-
 
 
 
