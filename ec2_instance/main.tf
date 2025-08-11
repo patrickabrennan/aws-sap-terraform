@@ -43,6 +43,9 @@ module "ec2_instances" {
 
   # Optional: pass a KMS key ARN for EBS encryption (else AWS-managed default)
   kms_key_arn = try(each.value.kms_key_arn, null)
+
+  enable_vip_eni = var.enable_vip_eni
+  vip_subnet_id  = var.vip_subnet_id
 }
 
 
