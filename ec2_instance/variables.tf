@@ -25,3 +25,8 @@ variable "vip_subnet_id" {
   type    = string
   default = ""
 }
+
+variable "enable_vip_eip" {
+  type    = bool
+  default = false
+}
