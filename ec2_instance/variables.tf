@@ -20,22 +20,6 @@ variable "sap_discovery_tag" {
   type        = string
 }
 
-# variables.ha.tf  (ROOT MODULE)
-
-# Two AZs to place HA nodes when ha = true
-variable "ha_azs" {
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
-  description = "Two AZs used for HA pairs."
-}
-
-# Fallback AZ for non-HA instances if not set per instance
-variable "default_availability_zone" {
-  type        = string
-  default     = "us-east-1a"
-  description = "Default AZ for non-HA instances."
-}
-
 # Optional floating ENI VIP (same-AZ only). Leave false for cross-AZ HA.
 variable "enable_vip_eni" {
   type        = bool
