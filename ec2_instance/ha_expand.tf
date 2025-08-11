@@ -1,4 +1,42 @@
 ########################################
+# Keep primary at original key; add -b only when ha=true
+########################################
+locals {
+  expanded_instances = merge(
+    # Primary stays at original key
+    {
+      for name, cfg in var.instances_to_create :
+      name => merge(cfg, {
+        hostname          = name
+        node_index        = 0
+        node_suffix       = ""
+        availability_zone = try(
+          cfg.availability_zone,
+          length(var.ha_azs) > 0 ? var.ha_azs[0] : var.default_availability_zone
+        )
+      })
+    },
+    # Secondary appears only when ha=true
+    {
+      for name, cfg in var.instances_to_create :
+      "${name}-b" => merge(cfg, {
+        hostname          = "${name}-b"
+        node_index        = 1
+        node_suffix       = "b"
+        availability_zone = try(
+          cfg.secondary_availability_zone,
+          length(var.ha_azs) > 1 ? var.ha_azs[1] : var.default_availability_zone
+        )
+      }) if try(cfg.ha, false)
+    }
+  )
+}
+
+
+
+
+/*
+########################################
 # ha_expand.tf
 ########################################
 
@@ -33,3 +71,4 @@ locals {
     }
   )
 }
+*/
