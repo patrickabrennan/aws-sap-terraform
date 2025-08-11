@@ -72,20 +72,7 @@ data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
 
-########################################
-# Resolve a single effective KMS ARN  #
-########################################
 
-
-
-# Prefer direct var, fall back to SSM value, else empty string.
-locals {
-  kms_key_arn_effective = (
-    var.kms_key_arn != ""
-    ? var.kms_key_arn
-    : try(data.aws_ssm_parameter.ebs_kms[0].value, "")
-  )
-}
 
 #############################################
 # SG IDs read from SSM for ENIs / VIP ENI  #
