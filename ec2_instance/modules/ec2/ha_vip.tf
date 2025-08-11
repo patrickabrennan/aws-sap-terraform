@@ -1,8 +1,8 @@
 ############################################
-# Subnet discovery for VIP ENI (optional)
+# VIP subnet resolution (per-instance AZ)
 ############################################
 
-# Only query when VIP is enabled AND no explicit vip_subnet_id was given
+# Only look up VIP subnets when the feature is enabled and no explicit ID is given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -11,13 +11,12 @@ data "aws_subnets" "vip" {
     values = [var.vpc_id]
   }
 
-  # Keep VIP ENI in the instance AZ by default
   filter {
     name   = "availability-zone"
     values = [var.availability_zone]
   }
 
-  # Optional: tag key/value
+  # Optional exact tag
   dynamic "filter" {
     for_each = (var.vip_subnet_tag_key != "" && var.vip_subnet_tag_value != "") ? [1] : []
     content {
@@ -26,9 +25,9 @@ data "aws_subnets" "vip" {
     }
   }
 
-  # Optional: tag:Name wildcard
+  # Optional Name filter
   dynamic "filter" {
-    for_each = var.vip_subnet_name_wildcard != "" ? [1] : []
+    for_each = (var.vip_subnet_name_wildcard != "") ? [1] : []
     content {
       name   = "tag:Name"
       values = [var.vip_subnet_name_wildcard]
@@ -37,45 +36,63 @@ data "aws_subnets" "vip" {
 }
 
 locals {
-  vip_candidates = var.enable_vip_eni
-    ? (var.vip_subnet_id != "" ? [var.vip_subnet_id] : try(data.aws_subnets.vip[0].ids, []))
-    : []
+  vip_candidate_ids = (
+    var.vip_subnet_id != ""
+      ? [var.vip_subnet_id]
+      : (var.enable_vip_eni ? try(data.aws_subnets.vip[0].ids, []) : [])
+  )
 
-  vip_subnet_id_effective = !var.enable_vip_eni
-    ? ""
-    : (
-        length(local.vip_candidates) == 1
-          ? local.vip_candidates[0]
-          : (
-              length(local.vip_candidates) > 1 && var.vip_subnet_selection_mode == "first"
-                ? sort(local.vip_candidates)[0]
-                : ""
-            )
-      )
+  vip_need_unique = var.vip_subnet_selection_mode != "first"
+
+  vip_subnet_id_effective = (
+    length(local.vip_candidate_ids) == 0 ? "" :
+    local.vip_need_unique
+      ? (length(local.vip_candidate_ids) == 1 ? local.vip_candidate_ids[0] : "")
+      : local.vip_candidate_ids[0]
+  )
 }
 
-# Helpful assertion when VIP is enabled but subnet can't be uniquely determined
+# Enforce rule only when VIP ENI is enabled
 resource "null_resource" "assert_vip_subnet" {
-  count    = var.enable_vip_eni ? 1 : 0
-  triggers = { chosen = local.vip_subnet_id_effective }
+  count = var.enable_vip_eni ? 1 : 0
 
   lifecycle {
     precondition {
-      condition = local.vip_subnet_id_effective != ""
-      error_message = "VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.\n" \
-        "Refine selection by setting one of:\n" \
-        " - vip_subnet_tag_key + vip_subnet_tag_value\n" \
-        " - vip_subnet_name_wildcard (e.g., \"*public*\" or \"*private*\")\n" \
-        "Or allow auto-pick by setting:\n" \
-        " - vip_subnet_selection_mode = \"first\""
+      condition     = local.vip_subnet_id_effective != ""
+      error_message = <<-EOT
+        VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.
+        Refine selection by setting one of:
+          - vip_subnet_tag_key + vip_subnet_tag_value
+          - vip_subnet_name_wildcard (e.g., "*public*" or "*private*")
+        Or allow auto-pick by setting:
+          - vip_subnet_selection_mode = "first"
+      EOT
     }
   }
 }
 
-# (Optional) If you create the VIP ENI here, you can use local.vip_subnet_id_effective:
-# resource "aws_network_interface" "ha_vip" {
-#   count     = var.enable_vip_eni ? 1 : 0
-#   subnet_id = local.vip_subnet_id_effective
-#   description = "HA VIP ENI"
-#   tags = { Name = "${var.availability_zone}-vip" }
-# }
+# Create the VIP ENI (if enabled)
+resource "aws_network_interface" "ha_vip" {
+  count = var.enable_vip_eni ? 1 : 0
+
+  subnet_id         = local.vip_subnet_id_effective
+  description       = "${var.hostname}-vip"
+  source_dest_check = var.application_code == "hana" ? false : true
+
+  # Reuse the same SGs as instance (from SSM lookups in data.tf)
+  security_groups = [
+    var.application_code == "hana"
+      ? data.aws_ssm_parameter.ec2_hana_sg.value
+      : data.aws_ssm_parameter.ec2_nw_sg.value
+  ]
+
+  tags = merge(
+    var.ec2_tags,
+    {
+      Name        = "${var.hostname}-vip"
+      Environment = var.environment
+      Application = var.application_code
+      Hostname    = var.hostname
+    }
+  )
+}
