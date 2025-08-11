@@ -1,44 +1,32 @@
 ########################################
 # modules/ec2/ebs.tf  (REPLACE)
 ########################################
-# Requires:
-# - local.all_disks  (list of disk objects from ebs_expansion.tf)
+# Expects:
+# - local.normalized_disks from ebs_expansion.tf, each disk having:
+#   name, disk_index, size, type, device (and optional iops, throughput)
 # - data.aws_subnet.effective (for AZ)
 # - data.aws_ssm_parameter.ebs_kms (optional KMS)
 
 locals {
-  # Make sure each disk has a name and index; fall back gracefully if fields are missing
-  all_disks_list = tolist(local.all_disks)
-
-  normalized_disks = [
-    for idx, d in local.all_disks_list : merge(d, {
-      name       = coalesce(
-                     try(tostring(d.name), null),
-                     try(tostring(d.label), null),
-                     try(tostring(d.volume_name), null),
-                     try(tostring(d.mount), null),
-                     "disk"
-                   )
-      disk_index = try(d.disk_index, idx)
-    })
-  ]
-
-  # Unique key per *instance* and *disk* so volumes never collide across -a/-b
-  all_disks_map = {
+  # Unique key per instance+disk so volumes never collide across -a/-b nodes
+  disks_map = {
     for d in local.normalized_disks :
     "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
   }
 }
 
 resource "aws_ebs_volume" "all_volumes" {
-  for_each          = local.all_disks_map
+  for_each          = local.disks_map
   availability_zone = data.aws_subnet.effective.availability_zone
 
-  size = tonumber(lookup(each.value, "size",
-         lookup(each.value, "volume_size", 0)))
-  type       = lookup(each.value, "type", "gp3")
+  size       = tonumber(each.value.size)
+  type       = each.value.type
   encrypted  = true
   kms_key_id = try(data.aws_ssm_parameter.ebs_kms.value, null)
+
+  # Optional performance params (only apply if present in your normalization)
+  iops       = try(each.value.iops, null)
+  throughput = try(each.value.throughput, null)
 
   tags = merge(var.ec2_tags, {
     Name        = "${var.hostname}-${each.value.name}-${format("%03d", each.value.disk_index)}"
@@ -48,7 +36,7 @@ resource "aws_ebs_volume" "all_volumes" {
 }
 
 resource "aws_volume_attachment" "all_attachments" {
-  for_each    = local.all_disks_map
+  for_each    = local.disks_map
   device_name = each.value.device
   volume_id   = aws_ebs_volume.all_volumes[each.key].id
   instance_id = aws_instance.this.id
@@ -66,7 +54,6 @@ resource "aws_volume_attachment" "all_attachments" {
     delete = "15m"
   }
 
-  # Optional guard if you're unsure device is always set:
   lifecycle {
     precondition {
       condition     = can(each.value.device) && each.value.device != ""
