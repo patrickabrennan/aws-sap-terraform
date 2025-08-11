@@ -2,8 +2,8 @@
 # modules/ec2/ebs.tf  (REPLACE)
 ########################################
 # Expects:
-# - local.normalized_disks from ebs_expansion.tf, each disk having:
-#   name, disk_index, size, type, device (and optional iops, throughput)
+# - local.normalized_disks from ebs_expansion.tf, each with:
+#   name, disk_index, size, type, device (optional iops, throughput)
 # - data.aws_subnet.effective (for AZ)
 # - data.aws_ssm_parameter.ebs_kms (optional KMS)
 
@@ -24,9 +24,19 @@ resource "aws_ebs_volume" "all_volumes" {
   encrypted  = true
   kms_key_id = try(data.aws_ssm_parameter.ebs_kms.value, null)
 
-  # Optional performance params (only apply if present in your normalization)
-  iops       = try(each.value.iops, null)
-  throughput = try(each.value.throughput, null)
+  # Only set IOPS when supported and >0 (gp3/io1/io2). Otherwise omit.
+  iops = (
+    contains(["gp3", "io1", "io2"], lower(each.value.type)) && try(tonumber(each.value.iops), 0) > 0
+    ? tonumber(each.value.iops)
+    : null
+  )
+
+  # Only set throughput for gp3 and when >0. Otherwise omit.
+  throughput = (
+    lower(each.value.type) == "gp3" && try(tonumber(each.value.throughput), 0) > 0
+    ? tonumber(each.value.throughput)
+    : null
+  )
 
   tags = merge(var.ec2_tags, {
     Name        = "${var.hostname}-${each.value.name}-${format("%03d", each.value.disk_index)}"
