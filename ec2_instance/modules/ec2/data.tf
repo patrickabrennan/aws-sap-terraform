@@ -2,7 +2,7 @@
 # Module data sources + PRIMARY subnet resolve
 ##############################################
 
-# (Keep these if you already use them; safe to remove if unused)
+# Keep only if you use these SSM params
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
@@ -50,31 +50,19 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  # Candidates from filters (or the explicitly provided subnet_ID)
-  _primary_candidates = var.subnet_ID != ""
-    ? [var.subnet_ID]
-    : (
-        length(data.aws_subnets.by_filters) == 1
-        ? data.aws_subnets.by_filters[0].ids
-        : []
-      )
+  _primary_candidates = (var.subnet_ID != "" ? [var.subnet_ID] : (length(data.aws_subnets.by_filters) == 1 ? data.aws_subnets.by_filters[0].ids : []))
 
-  # Pick one deterministically (mode="first") or require exactly one (mode="unique")
-  subnet_id_effective = (
-    length(local._primary_candidates) == 1
-      ? local._primary_candidates[0]
-      : (
-          var.subnet_selection_mode == "first" && length(local._primary_candidates) > 1
-          ? sort(local._primary_candidates)[0]
-          : ""
-        )
-  )
+  subnet_id_effective = (length(local._primary_candidates) == 1
+    ? local._primary_candidates[0]
+    : (var.subnet_selection_mode == "first" && length(local._primary_candidates) > 1
+      ? sort(local._primary_candidates)[0]
+      : ""))
 }
 
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
-      condition = local.subnet_id_effective != ""
+      condition     = local.subnet_id_effective != ""
       error_message = <<EOM
 Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
 Refine selection by setting one of:
@@ -87,7 +75,6 @@ EOM
   }
 }
 
-# Final resolved subnet used by ENI/Instance
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
