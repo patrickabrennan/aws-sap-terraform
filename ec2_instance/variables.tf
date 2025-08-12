@@ -107,17 +107,9 @@ variable "vip_subnet_selection_mode" {
 
 #add this to ID VPC
 variable "vpc_name" {
-  description = "Match VPC by Name tag exactly (optional alternative)."
+  description = "Match VPC by Name tag exactly (optional alternative). Optional: match VPC by Name tag (exact)"
   type        = string
   default     = "sap_vpc"
-}
-
-# Root module variables used by data.tf for VPC resolution
-
-variable "vpc_name" {
-  description = "Optional: match VPC by Name tag (exact)"
-  type        = string
-  default     = ""
 }
 
 variable "vpc_tag_key" {
