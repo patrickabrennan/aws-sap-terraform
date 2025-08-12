@@ -34,11 +34,7 @@ data "aws_subnets" "vip" {
 
 locals {
   _vip_candidates_from_filters = try(data.aws_subnets.vip[0].ids, [])
-  vip_candidate_ids = (
-    var.vip_subnet_id != ""
-      ? [var.vip_subnet_id]
-      : (var.enable_vip_eni ? local._vip_candidates_from_filters : [])
-  )
+  vip_candidate_ids            = var.vip_subnet_id != "" ? [var.vip_subnet_id] : (var.enable_vip_eni ? local._vip_candidates_from_filters : [])
 
   vip_need_unique  = lower(var.vip_subnet_selection_mode) != "first"
   _vip_picked_first = length(local.vip_candidate_ids) > 0 ? sort(local.vip_candidate_ids)[0] : ""
@@ -50,10 +46,8 @@ locals {
       : local._vip_picked_first
   )
 
-  # --- Precondition helpers for VIP ---
-  vip_condition = local.vip_need_unique
-    ? (local.vip_subnet_id_effective != "")
-    : (length(local.vip_candidate_ids) > 0)
+  # Inline conditional (single line)
+  vip_condition      = local.vip_need_unique ? (local.vip_subnet_id_effective != "") : (length(local.vip_candidate_ids) > 0)
 
   vip_error_unique = <<-EOT
     VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.
@@ -95,11 +89,7 @@ resource "aws_network_interface" "ha_vip" {
   security_groups = (
     length(var.security_group_ids) > 0
       ? var.security_group_ids
-      : (
-          var.application_code == "hana"
-            ? [data.aws_ssm_parameter.ec2_hana_sg.value]
-            : [data.aws_ssm_parameter.ec2_nw_sg.value]
-        )
+      : (var.application_code == "hana" ? [data.aws_ssm_parameter.ec2_hana_sg.value] : [data.aws_ssm_parameter.ec2_nw_sg.value])
   )
 
   depends_on = [null_resource.assert_sg_nonempty]
