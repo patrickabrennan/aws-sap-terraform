@@ -25,7 +25,7 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name filter (supports wildcards in many environments if Name tags are consistent)
+  # Optional Name filter (supports wildcards if Name tags are consistent)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -72,8 +72,6 @@ data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
 
-
-
 #############################################
 # SG IDs read from SSM for ENIs / VIP ENI  #
 #############################################
@@ -105,12 +103,27 @@ data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
 }
 
 locals {
+  # Effective IAM instance profile name (override > HA/non-HA from SSM)
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (var.ha
+      : (
+          var.ha
           ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
           : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
+        )
+  )
+
+  # Effective security group IDs for the primary ENI:
+  # - if caller passes var.security_group_ids, use them
+  # - otherwise choose from SSM based on application_code
+  resolved_security_group_ids = (
+    length(var.security_group_ids) > 0
+      ? var.security_group_ids
+      : (
+          var.application_code == "hana"
+            ? [data.aws_ssm_parameter.ec2_hana_sg.value]
+            : [data.aws_ssm_parameter.ec2_nw_sg.value]
         )
   )
 }
