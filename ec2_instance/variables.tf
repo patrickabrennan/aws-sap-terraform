@@ -1,142 +1,238 @@
-# root/variables.tf
-
-variable "aws_region"  { type = string }
-variable "environment" { type = string }
-variable "vpc_id" { 
-  type = string
-  default = ""
+########################################
+# Core / environment
+########################################
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
 }
 
-variable "instances_to_create" {
-  description = "Per-instance config keyed by logical name"
-  type = map(object({
-    availability_zone         = string
-    private_ip                = optional(string)
-    domain                    = string
-    application_code          = string      # "hana" or "nw"
-    application_SID           = string
-    ha                        = bool
-    ami_ID                    = string
-    key_name                  = string
-    monitoring                = bool
-    root_ebs_size             = number
-    ec2_tags                  = map(string)
-    instance_type             = string
-    # Optional HANA/NW-specific settings
-    hana_data_storage_type    = optional(string)
-    hana_logs_storage_type    = optional(string)
-    hana_backup_storage_type  = optional(string)
-    hana_shared_storage_type  = optional(string)
-    custom_ebs_config         = optional(any)
-  }))
+variable "environment" {
+  description = "Environment name (e.g., dev, prod)"
+  type        = string
 }
 
-variable "sap_discovery_tag" {
-  type    = string
-  default = ""
+variable "vpc_id" {
+  description = "VPC ID where resources will be created"
+  type        = string
 }
 
-variable "assign_public_eip" {
-  type    = bool
-  default = true
+variable "availability_zone" {
+  description = "AZ for this instance (e.g., us-east-1a)"
+  type        = string
 }
 
-variable "enable_vip_eni" {
-  type    = bool
-  default = false
+########################################
+# EC2 / instance identity
+########################################
+variable "hostname" {
+  description = "Hostname for this instance (used in names and tags)"
+  type        = string
 }
 
-variable "enable_vip_eip" {
+variable "domain" {
+  description = "DNS domain for the host"
+  type        = string
+}
+
+variable "private_ip" {
+  description = "Optional static private IP to assign to the ENI (null to auto-assign)"
+  type        = string
+  default     = null
+}
+
+variable "application_code" {
+  description = "App code (e.g., 'hana' or 'nw')"
+  type        = string
+}
+
+variable "application_SID" {
+  description = "Application SID"
+  type        = string
+}
+
+variable "ha" {
+  description = "Whether this node is part of an HA pair"
+  type        = bool
+}
+
+variable "ami_ID" {
+  description = "AMI ID to launch"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+}
+
+variable "key_name" {
+  description = "EC2 key pair name"
+  type        = string
+}
+
+variable "monitoring" {
+  description = "Enable detailed monitoring for the instance"
   type        = bool
   default     = false
-  description = "Attach a public EIP to the VIP ENI when true"
 }
 
-
-variable "vip_subnet_id" {
-  type    = string
-  default = ""
+variable "root_ebs_size" {
+  description = "Root volume size (GB) as a string"
+  type        = string
 }
 
-# ---- Subnet narrowing for instances ----
-variable "subnet_tag_key" { 
-  type = string 
-  default = "" 
+variable "ec2_tags" {
+  description = "Additional tags to apply to EC2 resources"
+  type        = map(any)
+  default     = {}
 }
 
-variable "subnet_tag_value" { 
-  type = string 
-  default = "" 
-}
-
-variable "subnet_name_wildcard" {
-  type = string 
-  default = "" 
-}
-
-variable "subnet_selection_mode" {
-  type    = string
-  default = "unique" # or "first"
-  validation {
-    condition     = contains(["unique","first"], var.subnet_selection_mode)
-    error_message = "subnet_selection_mode must be 'unique' or 'first'."
-  }
-}
-
-# ---- Subnet narrowing for VIP ENI (HA) ----
-variable "vip_subnet_tag_key" {
-  type = string 
-  default = "" 
-}
-
-variable "vip_subnet_tag_value" {
-  type = string
-  default = "" 
-}
-
-variable "vip_subnet_name_wildcard" {
-  type = string 
-  default = "" 
-}
-
-variable "vip_subnet_selection_mode" {
-  type    = string
-  default = "unique" # or "first"
-  validation {
-    condition     = contains(["unique","first"], var.vip_subnet_selection_mode)
-    error_message = "vip_subnet_selection_mode must be 'unique' or 'first'."
-  }
-}
-
-#add this to ID VPC
-variable "vpc_name" {
-  description = "Match VPC by Name tag exactly (optional alternative). Optional: match VPC by Name tag (exact)"
+########################################
+# EBS layout selection (HANA/NW presets)
+########################################
+variable "hana_data_storage_type" {
+  description = "Storage type for HANA data (gp3, io2, etc)"
   type        = string
   default     = ""
 }
 
-variable "vpc_tag_key" {
-  description = "Optional: arbitrary VPC tag key to match (used with vpc_tag_value)"
+variable "hana_logs_storage_type" {
+  description = "Storage type for HANA logs (gp3, io2, etc)"
   type        = string
   default     = ""
 }
 
-variable "vpc_tag_value" {
-  description = "Optional: arbitrary VPC tag value to match (used with vpc_tag_key)"
+variable "hana_backup_storage_type" {
+  description = "Storage type for HANA backup (st1, gp3, etc)"
   type        = string
   default     = ""
 }
 
-# Root variables.tf (add these)
+variable "hana_shared_storage_type" {
+  description = "Storage type for HANA shared (gp3, etc)"
+  type        = string
+  default     = ""
+}
 
+variable "custom_ebs_config" {
+  description = "Optional custom EBS layout (list of maps); if empty, defaults/specs are used"
+  type        = any
+  default     = []
+}
+
+########################################
+# KMS / encryption
+########################################
 variable "kms_key_arn" {
-  description = "KMS key ARN to encrypt EBS and the root volume. Leave empty to use default volume encryption."
+  description = "KMS key ARN to encrypt EBS and root volume (empty to use default volume encryption settings)"
   type        = string
   default     = ""
 }
 
 variable "ebs_kms_ssm_path" {
-  description = "Optional SSM Parameter path that contains the KMS key ARN (e.g., /env/kms/ebs/arn). Leave empty to skip."
+  description = "Optional SSM Parameter Store path that holds the EBS KMS key ARN (e.g., /env/kms/ebs/arn). If set, module may read and use it."
+  type        = string
+  default     = ""
+}
+
+########################################
+# Public EIP assignment for primary ENI (optional)
+########################################
+variable "assign_public_eip" {
+  description = "Attach a public EIP to the primary ENI of this instance"
+  type        = bool
+  default     = false
+}
+
+########################################
+# Subnet selection (primary ENI) – no hardcoding required
+########################################
+variable "subnet_ID" {
+  description = "Optional explicit Subnet ID for the primary ENI. Leave empty to auto-select by VPC+AZ (with optional narrowing rules)."
+  type        = string
+  default     = ""
+}
+
+variable "subnet_tag_key" {
+  description = "Optional tag key to narrow subnet selection (e.g., 'Tier')"
+  type        = string
+  default     = ""
+}
+
+variable "subnet_tag_value" {
+  description = "Optional tag value to narrow subnet selection (e.g., 'app')"
+  type        = string
+  default     = ""
+}
+
+variable "subnet_name_wildcard" {
+  description = "Optional Name tag wildcard to narrow subnet selection (e.g., '*public*' or '*private*')"
+  type        = string
+  default     = ""
+}
+
+variable "subnet_selection_mode" {
+  description = "If multiple subnets remain after filtering: 'unique' (error) or 'first' (auto-pick the first)"
+  type        = string
+  default     = "unique"
+}
+
+########################################
+# VIP ENI + VIP EIP (optional)
+########################################
+variable "enable_vip_eni" {
+  description = "Create a VIP ENI for HA scenarios"
+  type        = bool
+  default     = false
+}
+
+variable "enable_vip_eip" {
+  description = "Attach a public EIP to the VIP ENI"
+  type        = bool
+  default     = false
+}
+
+variable "vip_subnet_id" {
+  description = "Optional explicit Subnet ID for the VIP ENI. Leave empty to auto-select by VPC+AZ (with optional narrowing rules)."
+  type        = string
+  default     = ""
+}
+
+variable "vip_subnet_tag_key" {
+  description = "Optional tag key to narrow VIP subnet selection"
+  type        = string
+  default     = ""
+}
+
+variable "vip_subnet_tag_value" {
+  description = "Optional tag value to narrow VIP subnet selection"
+  type        = string
+  default     = ""
+}
+
+variable "vip_subnet_name_wildcard" {
+  description = "Optional Name tag wildcard to narrow VIP subnet selection (e.g., '*public*' or '*private*')"
+  type        = string
+  default     = ""
+}
+
+variable "vip_subnet_selection_mode" {
+  description = "If multiple VIP subnets remain after filtering: 'unique' (error) or 'first' (auto-pick the first)"
+  type        = string
+  default     = "unique"
+}
+
+########################################
+# NEW: Security groups & instance profile overrides
+########################################
+variable "security_group_ids" {
+  description = "Security groups to attach to the primary ENI. If empty, module reads from SSM based on application_code."
+  type        = list(string)
+  default     = []
+}
+
+variable "iam_instance_profile_name_override" {
+  description = "Override the instance profile name; otherwise read from SSM (HA/non-HA)."
   type        = string
   default     = ""
 }
