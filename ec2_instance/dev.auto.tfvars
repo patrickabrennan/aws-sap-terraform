@@ -1,13 +1,17 @@
-subnet_name_wildcard   = "sap_vpc_*b"     # or "*private*" — must match your subnet Name tags
-subnet_selection_mode  = "first"        # if more than one match, auto-pick the first
+# --- Global subnet narrowing (no hardcoding of IDs) ---
+subnet_tag_key        = "Tier"
+subnet_tag_value      = "app"
+subnet_selection_mode = "unique"    # or "first" if you prefer auto-pick when >1
 
-# VIP ENI subnet selection
-vip_subnet_name_wildcard   = "sap_vpc_*b"
-vip_subnet_selection_mode  = "first"
+# If your VIP ENI should use the same subnets, mirror the filters:
+vip_subnet_tag_key        = "Tier"
+vip_subnet_tag_value      = "app"
+vip_subnet_selection_mode = "unique"
 
 
-default_availability_zone = "us-east-1a"
-ha_azs                     = ["us-east-1a", "us-east-1b"]
+#default_availability_zone = "us-east-1a"
+#ha_azs                     = ["us-east-1a", "us-east-1b"]
+
 enable_vip_eni = true
 instances_to_create = {
     sapd01db1 = {
