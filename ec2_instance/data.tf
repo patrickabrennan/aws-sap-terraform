@@ -1,9 +1,9 @@
 ############################################
 # VPC resolution (choose by ID, Name tag, or arbitrary tag)
-# Expects variables declared elsewhere:
-#   - var.vpc_id (string, default "")
-#   - var.vpc_name (string, default "")
-#   - var.vpc_tag_key (string, default "")
+# Requires variables (declare in variables.tf):
+#   - var.vpc_id        (string, default "")
+#   - var.vpc_name      (string, default "")
+#   - var.vpc_tag_key   (string, default "")
 #   - var.vpc_tag_value (string, default "")
 ############################################
 
@@ -28,6 +28,7 @@ data "aws_vpcs" "by_tag" {
 }
 
 locals {
+  # Order of precedence: explicit vpc_id, then Name, then arbitrary tag
   vpc_candidates = compact(concat(
     var.vpc_id != "" ? [var.vpc_id] : [],
     var.vpc_name != "" ? try(data.aws_vpcs.by_name[0].ids, []) : [],
@@ -53,7 +54,7 @@ data "aws_vpc" "sap" {
 
 ############################################
 # SSM lookups for security group IDs
-# Expects var.environment (string)
+# Requires: var.environment (string)
 ############################################
 
 data "aws_ssm_parameter" "app1_sg" {
