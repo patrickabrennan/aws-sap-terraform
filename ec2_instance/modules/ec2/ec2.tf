@@ -22,14 +22,15 @@ resource "aws_instance" "this" {
     : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
   )
 
+  # Ensure the root volume is deleted when the instance is terminated
   root_block_device {
-    volume_size = tonumber(var.root_ebs_size)
-    volume_type = "gp3"
+    volume_size           = tonumber(var.root_ebs_size)
+    volume_type           = "gp3"
+    delete_on_termination = true
+
+    # Encrypt root if a key is provided via your existing local
     encrypted  = local.kms_key_arn_effective != "" ? true : null
     kms_key_id = local.kms_key_arn_effective != "" ? local.kms_key_arn_effective : null
-
-    #encrypted   = true
-    #kms_key_id  = var.kms_key_arn
   }
 
   tags = merge(var.ec2_tags, {
@@ -42,6 +43,7 @@ resource "aws_instance" "this" {
   })
 
   lifecycle {
+    # Keep this if you want to avoid downtime when Terraform must replace
     create_before_destroy = true
   }
 }
