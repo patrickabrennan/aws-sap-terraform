@@ -12,6 +12,7 @@ vip_subnet_selection_mode = "unique"
 #default_availability_zone = "us-east-1a"
 #ha_azs                     = ["us-east-1a", "us-east-1b"]
 
+vpc_name = "sap_vpc"
 enable_vip_eni = true
 instances_to_create = {
     sapd01db1 = {
