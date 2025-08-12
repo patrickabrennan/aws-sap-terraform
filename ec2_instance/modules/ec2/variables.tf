@@ -130,7 +130,7 @@ variable "kms_key_arn" {
 }
 
 variable "ebs_kms_ssm_path" {
-  description = "Optional SSM Parameter Store path that holds the EBS KMS key ARN (e.g., /env/kms/ebs/arn). If set, module may read and use it."
+  description = "Optional SSM Parameter Store path that holds the EBS KMS key ARN (e.g., /env/kms/ebs/arn)"
   type        = string
   default     = ""
 }
