@@ -4,7 +4,7 @@ variable "aws_region"  { type = string }
 variable "environment" { type = string }
 variable "vpc_id" { 
   type = string
-  default ""
+  default = ""
 }
 
 variable "instances_to_create" {
