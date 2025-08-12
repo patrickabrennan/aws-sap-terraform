@@ -8,24 +8,24 @@
 ############################################
 
 # Optional: match VPCs by Name tag
-#data "aws_vpcs" "by_name" {
-#  count = var.vpc_name != "" ? 1 : 0
+data "aws_vpcs" "by_name" {
+  count = var.vpc_name != "" ? 1 : 0
 
-#  filter {
-#    name   = "tag:Name"
-#    values = [var.vpc_name]
-#  }
-#}
+  filter {
+    name   = "tag:Name"
+    values = [var.vpc_name]
+  }
+}
 
 # Optional: match VPCs by arbitrary tag key/value
-#data "aws_vpcs" "by_tag" {
-#  count = (var.vpc_tag_key != "" && var.vpc_tag_value != "") ? 1 : 0
+data "aws_vpcs" "by_tag" {
+  count = (var.vpc_tag_key != "" && var.vpc_tag_value != "") ? 1 : 0
 
-#  filter {
-#    name   = "tag:${var.vpc_tag_key}"
-#    values = [var.vpc_tag_value]
-#  }
-#}
+  filter {
+    name   = "tag:${var.vpc_tag_key}"
+    values = [var.vpc_tag_value]
+  }
+}
 
 locals {
   vpc_candidates = compact(concat(
