@@ -2,7 +2,6 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
-# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -16,7 +15,6 @@ data "aws_subnets" "by_filters" {
     values = [var.availability_zone]
   }
 
-  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -25,7 +23,6 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name filter (supports wildcards if Name tags are consistent)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -36,18 +33,15 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  # Candidates: explicit subnet_ID wins; otherwise whatever the filter returned (or empty)
   subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : try(data.aws_subnets.by_filters[0].ids, [])
 
-  # Unique-or-first policy
-  subnet_id_effective = (
-    length(local.subnet_id_candidates) == 1
-      ? local.subnet_id_candidates[0]
-      : (var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1 ? local.subnet_id_candidates[0] : "")
+  # One-line ternary to avoid parse issues
+  subnet_id_effective = (length(local.subnet_id_candidates) == 1
+    ? local.subnet_id_candidates[0]
+    : (var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1 ? local.subnet_id_candidates[0] : "")
   )
 }
 
-# Enforce the selection rule with a human-friendly message
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -64,7 +58,6 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
-# The chosen subnet (used by ENIs/instances)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
@@ -73,42 +66,32 @@ data "aws_subnet" "effective" {
 # SSM lookups for SGs and IAM instance profile
 #############################################
 
-# HANA (DB) node SG id
 data "aws_ssm_parameter" "ec2_hana_sg" {
   name = "/${var.environment}/security_group/db1/id"
 }
 
-# NetWeaver/App node SG id
 data "aws_ssm_parameter" "ec2_nw_sg" {
   name = "/${var.environment}/security_group/app1/id"
 }
 
-# HA profile name
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
 
-# Non-HA profile name
 data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
 }
 
 locals {
-  # Effective IAM instance profile name (override > HA/non-HA from SSM)
-  iam_instance_profile_name_effective = (
-    var.iam_instance_profile_name_override != ""
-      ? var.iam_instance_profile_name_override
-      : (var.ha ? data.aws_ssm_parameter.ec2_ha_instance_profile.value : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value)
+  iam_instance_profile_name_effective = (var.iam_instance_profile_name_override != ""
+    ? var.iam_instance_profile_name_override
+    : (var.ha ? data.aws_ssm_parameter.ec2_ha_instance_profile.value : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value)
   )
 
-  # Resolved SG IDs for ENIs: prefer caller-supplied; else pick from SSM based on application_code
   _sg_from_input = try(var.security_group_ids, [])
 
-  resolved_security_group_ids = length(local._sg_from_input) > 0
-    ? local._sg_from_input
-    : [
-        var.application_code == "hana"
-          ? data.aws_ssm_parameter.ec2_hana_sg.value
-          : data.aws_ssm_parameter.ec2_nw_sg.value
-      ]
+  # **Fix**: put ternary on one line
+  resolved_security_group_ids = length(local._sg_from_input) > 0 ? local._sg_from_input : [
+    var.application_code == "hana" ? data.aws_ssm_parameter.ec2_hana_sg.value : data.aws_ssm_parameter.ec2_nw_sg.value
+  ]
 }
