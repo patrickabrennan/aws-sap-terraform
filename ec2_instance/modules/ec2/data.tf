@@ -2,6 +2,7 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
+# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -15,6 +16,7 @@ data "aws_subnets" "by_filters" {
     values = [var.availability_zone]
   }
 
+  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -23,6 +25,7 @@ data "aws_subnets" "by_filters" {
     }
   }
 
+  # Optional Name filter (supports wildcards if Name tags are consistent)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -33,10 +36,19 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
+  # Raw candidates from filters (or empty)
   _candidates_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
-  subnet_id_candidates     = var.subnet_ID != "" ? [var.subnet_ID] : local._candidates_from_filters
 
-  need_unique  = lower(var.subnet_selection_mode) != "first"
+  # Normalize input (turn null into "")
+  _subnet_id_input = try(coalesce(var.subnet_ID, ""), "")
+
+  # Build raw candidate list
+  _subnet_id_candidates_raw = _subnet_id_input != "" ? [_subnet_id_input] : local._candidates_from_filters
+
+  # Remove nulls and empty strings
+  subnet_id_candidates = [for id in local._subnet_id_candidates_raw : id if id != null && trim(id) != ""]
+
+  need_unique   = lower(var.subnet_selection_mode) != "first"
   _picked_first = length(local.subnet_id_candidates) > 0 ? sort(local.subnet_id_candidates)[0] : ""
 
   subnet_id_effective = (
@@ -46,7 +58,7 @@ locals {
       : local._picked_first
   )
 
-  # Inline conditional (single line) to keep HCL happy
+  # Inline condition + message for the precondition
   subnet_condition      = local.need_unique ? (local.subnet_id_effective != "") : (length(local.subnet_id_candidates) > 0)
 
   subnet_error_unique = <<-EOT
@@ -68,6 +80,7 @@ locals {
   subnet_error_message = local.need_unique ? local.subnet_error_unique : local.subnet_error_none
 }
 
+# Enforce the selection rule with a human-friendly message
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -77,53 +90,73 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
+# Finally, expose the chosen subnet (used by other resources in this module)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
 
 #############################################
-# SG IDs read from SSM for ENIs / VIP ENI
+# SG IDs read from SSM for ENIs / VIP ENI  #
 #############################################
 
+# HANA node SG id (db1)
 data "aws_ssm_parameter" "ec2_hana_sg" {
+  # Expects something like: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
+# NetWeaver/app node SG id (app1)
 data "aws_ssm_parameter" "ec2_nw_sg" {
+  # Expects something like: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
 ###########################################
-# IAM Instance Profile name via SSM (optional override)
+# Resolve IAM Instance Profile name via SSM
 ###########################################
 
+# HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2-ha/name
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
 
+# Non-HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2/name
 data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
 }
 
 locals {
+  # Effective IAM instance profile name (override > HA/non-HA from SSM)
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (var.ha ? data.aws_ssm_parameter.ec2_ha_instance_profile.value : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value)
+      : (
+          var.ha
+          ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
+          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
+        )
   )
 
+  # Effective security group IDs for the primary ENI:
+  # - if caller passes var.security_group_ids, use them
+  # - otherwise choose from SSM based on application_code
   resolved_security_group_ids = (
     length(var.security_group_ids) > 0
       ? var.security_group_ids
-      : (var.application_code == "hana" ? [data.aws_ssm_parameter.ec2_hana_sg.value] : [data.aws_ssm_parameter.ec2_nw_sg.value])
+      : (
+          var.application_code == "hana"
+            ? [data.aws_ssm_parameter.ec2_hana_sg.value]
+            : [data.aws_ssm_parameter.ec2_nw_sg.value]
+        )
   )
 }
 
+# Optional guard that some ENI SGs were resolved
 resource "null_resource" "assert_sg_nonempty" {
   lifecycle {
     precondition {
       condition     = length(local.resolved_security_group_ids) > 0
-      error_message = "No security groups resolved for instance; pass security_group_ids or ensure SSM SG parameters exist."
+      error_message = "No security groups resolved for ENI. Pass security_group_ids or ensure SSM paths exist."
     }
   }
 }
