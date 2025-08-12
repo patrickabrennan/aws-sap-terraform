@@ -5,26 +5,24 @@
 # Create one EC2 stack per entry in instances_to_create
 module "ec2_instances" {
   source   = "./modules/ec2"
-  for_each = var.instances_to_create
+  for_each = local.effective_instances_to_create
 
-  # --- Required context ---
-  vpc_id            = var.vpc_id
+  vpc_id            = data.aws_vpc.sap.id
   availability_zone = each.value.availability_zone
 
   aws_region       = var.aws_region
   environment      = var.environment
-
-  # --- Instance identity / app details ---
   hostname         = each.key
   domain           = each.value.domain
   private_ip       = try(each.value.private_ip, null)
-
   application_code = each.value.application_code
   application_SID  = each.value.application_SID
-  ha               = each.value.ha
+  ha               = try(each.value.ha, false)
+  ami_ID           = each.value.ami_ID
+  instance_type    = each.value.instance_type
 
-  ami_ID        = each.value.ami_ID
-  instance_type = each.value.instance_type
+  # … plus the rest of your inputs (EBS, KMS, subnet selection, etc.)
+
 
   # --- EBS layout controls (per instance) ---
   hana_data_storage_type   = try(each.value.hana_data_storage_type, "")
