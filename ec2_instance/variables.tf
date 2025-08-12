@@ -2,7 +2,10 @@
 
 variable "aws_region"  { type = string }
 variable "environment" { type = string }
-variable "vpc_id"      { type = string }
+variable "vpc_id" { 
+  type = string
+  default ""
+}
 
 variable "instances_to_create" {
   description = "Per-instance config keyed by logical name"
@@ -109,7 +112,7 @@ variable "vip_subnet_selection_mode" {
 variable "vpc_name" {
   description = "Match VPC by Name tag exactly (optional alternative). Optional: match VPC by Name tag (exact)"
   type        = string
-  default     = "sap_vpc"
+  default     = ""
 }
 
 variable "vpc_tag_key" {
