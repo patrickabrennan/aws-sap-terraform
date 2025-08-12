@@ -35,7 +35,6 @@ data "aws_subnets" "by_filters" {
 locals {
   subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : try(data.aws_subnets.by_filters[0].ids, [])
 
-  # One-line ternary to avoid parse issues
   subnet_id_effective = (length(local.subnet_id_candidates) == 1
     ? local.subnet_id_candidates[0]
     : (var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1 ? local.subnet_id_candidates[0] : "")
@@ -58,6 +57,7 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
+# 🔹 id-based final lookup (cannot return multiple)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
@@ -90,7 +90,6 @@ locals {
 
   _sg_from_input = try(var.security_group_ids, [])
 
-  # **Fix**: put ternary on one line
   resolved_security_group_ids = length(local._sg_from_input) > 0 ? local._sg_from_input : [
     var.application_code == "hana" ? data.aws_ssm_parameter.ec2_hana_sg.value : data.aws_ssm_parameter.ec2_nw_sg.value
   ]
