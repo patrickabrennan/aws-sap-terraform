@@ -8,10 +8,8 @@ resource "aws_network_interface" "this" {
   source_dest_check = true
 
   # Optional static private IP, else AWS assigns one
-  dynamic "private_ips" {
-    for_each = var.private_ip != null && trim(var.private_ip) != "" ? [1] : []
-    content  = [var.private_ip]
-  }
+  # **Fix**: no dynamic block for an argument; use null when not set
+  private_ips = (var.private_ip != null && trimspace(var.private_ip) != "" ? [var.private_ip] : null)
 
   # Resolved SGs from data.tf locals
   security_groups = local.resolved_security_group_ids
