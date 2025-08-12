@@ -2,7 +2,6 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
-# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -16,7 +15,6 @@ data "aws_subnets" "by_filters" {
     values = [var.availability_zone]
   }
 
-  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -25,7 +23,6 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name filter (supports wildcards if Name tags are consistent)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -35,32 +32,9 @@ data "aws_subnets" "by_filters" {
   }
 }
 
-# AZ-only fallback (no narrowing filters)
-data "aws_subnets" "az_only" {
-  count = var.subnet_ID == "" ? 1 : 0
-
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-
-  filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-}
-
 locals {
-  # Prefer filtered list; if empty, also consider AZ-only. Use concat to avoid coalescelist errors.
-  _candidates_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
-  _candidates_from_azonly  = try(data.aws_subnets.az_only[0].ids, [])
-  _candidates_union        = distinct(sort(concat(local._candidates_from_filters, local._candidates_from_azonly)))
-
-  # Candidate IDs: explicit subnet_ID wins; otherwise the union
-  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : local._candidates_union
-
-  # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
-  need_unique = var.subnet_selection_mode != "first"
+  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : try(data.aws_subnets.by_filters[0].ids, [])
+  need_unique          = var.subnet_selection_mode != "first"
 
   subnet_id_effective = (
     length(local.subnet_id_candidates) == 0 ? "" :
@@ -70,7 +44,6 @@ locals {
   )
 }
 
-# Enforce the selection rule with a human-friendly message
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -87,13 +60,12 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
-# Finally, expose the chosen subnet (used by other resources)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
 
 #############################################
-# SG IDs read from SSM for ENIs / VIP ENI  #
+# SG IDs read from SSM for ENIs / VIP ENI
 #############################################
 
 data "aws_ssm_parameter" "ec2_hana_sg" {
@@ -105,7 +77,7 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 }
 
 ###########################################
-# Resolve IAM Instance Profile name via SSM
+# IAM Instance Profile name via SSM (optional override)
 ###########################################
 
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
@@ -120,9 +92,11 @@ locals {
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (var.ha
+      : (
+          var.ha
           ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
-          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value)
+          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
+        )
   )
 
   resolved_security_group_ids = (
@@ -134,4 +108,14 @@ locals {
             : [data.aws_ssm_parameter.ec2_nw_sg.value]
         )
   )
+}
+
+# NEW: ensure SGs resolved
+resource "null_resource" "assert_sg_nonempty" {
+  lifecycle {
+    precondition {
+      condition     = length(local.resolved_security_group_ids) > 0
+      error_message = "No security groups resolved for instance; pass security_group_ids or ensure SSM SG parameters exist."
+    }
+  }
 }
