@@ -19,7 +19,7 @@ locals {
 
 resource "aws_ebs_volume" "all_volumes" {
   for_each          = local.disks_map
-  availability_zone = data.aws_subnet.effective.availability_zone
+  availability_zone = var.availability_zone
 
   size       = tonumber(each.value.size)
   type       = lower(each.value.type)
