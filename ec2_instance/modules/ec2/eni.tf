@@ -1,33 +1,26 @@
-# Primary ENI (keep ENI here; do NOT also define it in ec2.tf)
 resource "aws_network_interface" "this" {
   subnet_id         = data.aws_subnet.effective.id
-  security_groups   = var.security_group_ids
-  source_dest_check = lower(var.application_code) == "hana" ? false : true
+  description       = "${var.hostname}-eni"
+  source_dest_check = var.application_code == "hana" ? false : true
 
-  # (Optional static IP support)
-  # If you want to force a specific IP, uncomment the next line.
-  # private_ips = var.private_ip == null ? null : [var.private_ip]
+  # We assert non-empty SGs in data.tf, so set directly (no ternary).
+  security_groups = local.resolved_security_group_ids
 
-  tags = merge(var.ec2_tags, {
-    Name        = "${var.hostname}-eni0"
-    environment = var.environment
-  })
+  # Only send a static IP if you set one
+  private_ips = (var.private_ip != null && var.private_ip != "") ? [var.private_ip] : null
+
+  tags = merge(
+    var.ec2_tags,
+    {
+      Name        = "${var.hostname}-eni"
+      Environment = var.environment
+      Application = var.application_code
+      Hostname    = var.hostname
+    }
+  )
+
+  depends_on = [
+    null_resource.assert_single_subnet,
+    null_resource.assert_sg_nonempty
+  ]
 }
-
-
-
-
-
-
-#resource "aws_network_interface" "this" {
-#  subnet_id         = data.aws_subnet.effective.id
-#  #subnet_id         = var.subnet_ID
-#  private_ips       = var.private_ip == "" ? null : [var.private_ip]
-#  security_groups   = [var.application_code == "hana" ? data.aws_ssm_parameter.ec2_hana_sg.value : data.aws_ssm_parameter.ec2_nw_sg.value]
-#  source_dest_check = var.application_code == "hana" ? false : true
-
-#  tags = {
-#    Name        = var.hostname
-#    environment = var.environment
-#  }
-#}
