@@ -1,22 +1,17 @@
 ############################################
-# Subnet resolution (no hardcoding needed)
+# Subnet resolution (no AZ input required)
+# - Select by VPC + optional tag or Name
+# - Derive the instance AZ from the chosen subnet
 ############################################
 
-# Filtered search by VPC+AZ (+ optional tag/wildcard) — only if no explicit ID
+# All subnets in the VPC, optionally narrowed by tag or Name
 data "aws_subnets" "by_filters" {
-  count = var.subnet_ID == "" ? 1 : 0
-
+  # We always allow tag/wildcard narrowing; caller can pass none.
   filter {
     name   = "vpc-id"
     values = [var.vpc_id]
   }
 
-  filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-
-  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -25,7 +20,6 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name wildcard (e.g., "*private*" or "*public*")
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -35,57 +29,29 @@ data "aws_subnets" "by_filters" {
   }
 }
 
-# AZ-only search (no tag/wildcard filters) — used as a fallback
-data "aws_subnets" "az_only" {
-  count = var.subnet_ID == "" ? 1 : 0
-
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-
-  filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-}
-
 locals {
-  # Candidates from input and lookups
-  _ids_from_input   = var.subnet_ID != "" ? [var.subnet_ID] : []
-  _ids_from_filters = var.subnet_ID == "" ? try(data.aws_subnets.by_filters[0].ids, []) : []
-  _ids_from_azonly  = var.subnet_ID == "" ? try(data.aws_subnets.az_only[0].ids, [])   : []
+  # Build candidate pool: explicit ID (if given) + any from filters
+  _input_subnet_id           = var.subnet_ID
+  _from_filters              = try(data.aws_subnets.by_filters.ids, [])  # ids is empty if no matches
+  _candidates_raw            = concat((_input_subnet_id != "" ? [ _input_subnet_id ] : []), _from_filters)
+  subnet_id_candidates       = [for id in local._candidates_raw : id if id != null && trim(id, " ") != ""]
 
-  # Use filtered results if any; otherwise fall back to AZ-only results
-  _pool = length(local._ids_from_filters) > 0 ? local._ids_from_filters : local._ids_from_azonly
-
-  _raw_candidates = concat(local._ids_from_input, local._pool)
-
-  # Clean & normalize
-  subnet_id_candidates = sort(distinct([
-    for id in local._raw_candidates : trimspace(id)
-    if id != null && trimspace(id) != ""
-  ]))
-
-  # Decide outcome by selection mode
-  subnet_id_effective = (
-    length(local.subnet_id_candidates) == 1
-      ? local.subnet_id_candidates[0]
-      : (
-          var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1
-            ? local.subnet_id_candidates[0]
-            : ""
-        )
+  need_unique                = var.subnet_selection_mode != "first"
+  subnet_id_effective        = (
+    length(local.subnet_id_candidates) == 0 ? "" :
+    local.need_unique
+      ? (length(local.subnet_id_candidates) == 1 ? local.subnet_id_candidates[0] : "")
+      : sort(local.subnet_id_candidates)[0]
   )
 }
 
-# Enforce “must have exactly one” unless you asked for "first"
+# Enforce: must have exactly one (if unique) or at least one (if first)
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
       condition     = local.subnet_id_effective != ""
       error_message = <<-EOT
-        Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
+        Subnet lookup did not resolve to a single subnet in ${var.vpc_id}.
         Provide subnet_ID or narrow with:
           - subnet_tag_key + subnet_tag_value (e.g., Tier=app)
           - subnet_name_wildcard (e.g., "*public*" or "*private*")
@@ -96,23 +62,36 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
-# ID-based (safe) lookup, guarded by count so it never runs with an empty ID
+# Chosen primary subnet (gives us the AZ too)
 data "aws_subnet" "effective" {
-  count = local.subnet_id_effective != "" ? 1 : 0
-  id    = local.subnet_id_effective
+  id = local.subnet_id_effective
+}
+
+locals {
+  # Instance AZ is derived from the selected subnet (no input AZ needed)
+  instance_az_effective = try(data.aws_subnet.effective.availability_zone, "")
+  primary_subnet_id     = local.subnet_id_effective
 }
 
 #############################################
-# SSM lookups for SGs and IAM instance profile
+# SG IDs read from SSM for ENIs / VIP ENI
 #############################################
 
+# HANA node SG id (db1)
 data "aws_ssm_parameter" "ec2_hana_sg" {
+  # Expects something like: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
+# NetWeaver/app node SG id (app1)
 data "aws_ssm_parameter" "ec2_nw_sg" {
+  # Expects something like: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
+
+###########################################
+# Resolve IAM Instance Profile name via SSM
+###########################################
 
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
@@ -123,25 +102,23 @@ data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
 }
 
 locals {
+  # Optional override; else pick HA/non-HA profile via SSM
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (
-          var.ha
+      : (var.ha
           ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
           : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
         )
   )
 
-  _sg_from_input = try(var.security_group_ids, [])
-
+  # Security groups for ENIs:
   resolved_security_group_ids = (
-    length(local._sg_from_input) > 0
-      ? local._sg_from_input
-      : [
-          var.application_code == "hana"
-            ? data.aws_ssm_parameter.ec2_hana_sg.value
-            : data.aws_ssm_parameter.ec2_nw_sg.value
-        ]
+    length(var.security_group_ids) > 0
+      ? var.security_group_ids
+      : (var.application_code == "hana"
+          ? [data.aws_ssm_parameter.ec2_hana_sg.value]
+          : [data.aws_ssm_parameter.ec2_nw_sg.value]
+        )
   )
 }
