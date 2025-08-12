@@ -1,137 +1,43 @@
 ############################################
-# Subnet resolution (no hardcoding needed)
+# Resolve a VPC: by ID, by Name tag, or by arbitrary tag
 ############################################
 
-# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
-data "aws_subnets" "by_filters" {
-  count = var.subnet_ID == "" ? 1 : 0
-
+data "aws_vpcs" "by_name" {
+  count = var.vpc_name != "" ? 1 : 0
   filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
+    name   = "tag:Name"
+    values = [var.vpc_name]
   }
+}
 
+data "aws_vpcs" "by_tag" {
+  count = (var.vpc_tag_key != "" && var.vpc_tag_value != "") ? 1 : 0
   filter {
-    name   = "availability-zone"
-    values = [var.availability_zone]
-  }
-
-  # Optional exact tag match (e.g., Tier = app)
-  dynamic "filter" {
-    for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
-    content {
-      name   = "tag:${var.subnet_tag_key}"
-      values = [var.subnet_tag_value]
-    }
-  }
-
-  # Optional Name filter (supports wildcards if Name tags are consistent)
-  dynamic "filter" {
-    for_each = (var.subnet_name_wildcard != "") ? [1] : []
-    content {
-      name   = "tag:Name"
-      values = [var.subnet_name_wildcard]
-    }
+    name   = "tag:${var.vpc_tag_key}"
+    values = [var.vpc_tag_value]
   }
 }
 
 locals {
-  # Candidate IDs: explicit subnet_ID wins; otherwise whatever the filter returned (or empty)
-  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : try(data.aws_subnets.by_filters[0].ids, [])
+  vpc_candidates = compact(concat(
+    var.vpc_id != "" ? [var.vpc_id] : [],
+    var.vpc_name != "" ? try(data.aws_vpcs.by_name[0].ids, []) : [],
+    (var.vpc_tag_key != "" && var.vpc_tag_value != "") ? try(data.aws_vpcs.by_tag[0].ids, []) : []
+  ))
 
-  # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
-  need_unique = var.subnet_selection_mode != "first"
-
-  subnet_id_effective = (
-    length(local.subnet_id_candidates) == 0 ? "" :
-    local.need_unique
-      ? (length(local.subnet_id_candidates) == 1 ? local.subnet_id_candidates[0] : "")
-      : local.subnet_id_candidates[0]
-  )
+  vpc_id_effective = length(local.vpc_candidates) > 0 ? local.vpc_candidates[0] : ""
 }
 
-# Enforce the selection rule with a human-friendly message
-resource "null_resource" "assert_single_subnet" {
+resource "null_resource" "assert_vpc" {
   lifecycle {
     precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = <<-EOT
-        Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
-        Refine selection by setting one of:
-          - subnet_tag_key + subnet_tag_value       (e.g., Tier=app)
-          - subnet_name_wildcard                    (e.g., "*public*" or "*private*")
-        Or allow auto-pick by setting:
-          - subnet_selection_mode = "first"
-      EOT
+      condition     = local.vpc_id_effective != ""
+      error_message = "Could not resolve a VPC. Set one of: vpc_id, vpc_name, or vpc_tag_key+vpc_tag_value."
     }
   }
 }
 
-# Finally, expose the chosen subnet (used by other resources)
-data "aws_subnet" "effective" {
-  id = local.subnet_id_effective
-}
-
-#############################################
-# SG IDs read from SSM (used if not passed)
-#############################################
-
-data "aws_ssm_parameter" "ec2_hana_sg" {
-  name = "/${var.environment}/security_group/db1/id"
-}
-
-data "aws_ssm_parameter" "ec2_nw_sg" {
-  name = "/${var.environment}/security_group/app1/id"
-}
-
-###########################################
-# Resolve IAM Instance Profile name via SSM
-###########################################
-
-data "aws_ssm_parameter" "ec2_ha_instance_profile" {
-  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
-}
-
-data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
-  name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
-}
-
-locals {
-  # Effective IAM profile name (override > HA/non-HA SSM)
-  iam_instance_profile_name_effective = (
-    var.iam_instance_profile_name_override != ""
-      ? var.iam_instance_profile_name_override
-      : (
-          var.ha
-          ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
-          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
-        )
-  )
-
-  # Raw SG resolution (passed-in > SSM per application)
-  _resolved_sg_ids = (
-    length(var.security_group_ids) > 0
-      ? var.security_group_ids
-      : (
-          var.application_code == "hana"
-            ? [data.aws_ssm_parameter.ec2_hana_sg.value]
-            : [data.aws_ssm_parameter.ec2_nw_sg.value]
-        )
-  )
-
-  # Remove blanks/whitespace just in case
-  resolved_security_group_ids = [
-    for id in local._resolved_sg_ids : trim(id)
-    if trim(id) != ""
-  ]
-}
-
-# Fail early if nothing resolved (prevents AWS “No attributes specified”)
-resource "null_resource" "assert_sg_nonempty" {
-  lifecycle {
-    precondition {
-      condition     = length(local.resolved_security_group_ids) > 0
-      error_message = "No security groups resolved. Pass security_group_ids, or fix SSM parameters /${var.environment}/security_group/*/id."
-    }
-  }
+data "aws_vpc" "sap" {
+  id         = local.vpc_id_effective
+  depends_on = [null_resource.assert_vpc]
 }
