@@ -3,6 +3,9 @@
 ############################################
 
 # If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
+# We fetch TWO lists:
+#   - by_filters: VPC+AZ plus optional narrowing
+#   - az_only:   VPC+AZ only (fallback if filters give 0 results)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -35,9 +38,32 @@ data "aws_subnets" "by_filters" {
   }
 }
 
+# AZ-only fallback (no narrowing filters)
+data "aws_subnets" "az_only" {
+  count = var.subnet_ID == "" ? 1 : 0
+
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+}
+
 locals {
-  # Candidate IDs: explicit subnet_ID wins; otherwise whatever the filter returned (or empty)
-  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : try(data.aws_subnets.by_filters[0].ids, [])
+  # Prefer filtered list if not empty; else fall back to AZ-only
+  _candidates_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
+  _candidates_from_azonly  = try(data.aws_subnets.az_only[0].ids, [])
+
+  _candidates_union = coalescelist(local._candidates_from_filters, local._candidates_from_azonly)
+
+  # Candidate IDs: explicit subnet_ID wins; otherwise the union (sorted for determinism)
+  subnet_id_candidates = var.subnet_ID != ""
+    ? [var.subnet_ID]
+    : distinct(sort(local._candidates_union))
 
   # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
   need_unique = var.subnet_selection_mode != "first"
