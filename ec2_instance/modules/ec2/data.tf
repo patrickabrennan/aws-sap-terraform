@@ -2,6 +2,7 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
+# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -15,7 +16,7 @@ data "aws_subnets" "by_filters" {
     values = [var.availability_zone]
   }
 
-  # Optional exact tag (e.g., Tier=app)
+  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -24,7 +25,7 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name wildcard (e.g., "*private*")
+  # Optional Name wildcard (e.g., "*private*" or "*public*")
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -35,17 +36,27 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  # Candidate IDs: explicit wins; else from filters (or empty)
-  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : try(data.aws_subnets.by_filters[0].ids, [])
+  # Raw candidates:
+  _ids_from_filters = var.subnet_ID == "" ? try(data.aws_subnets.by_filters[0].ids, []) : []
+  _ids_from_input   = var.subnet_ID != "" ? [var.subnet_ID] : []
 
-  # Pick one deterministically if allowed
+  # Merge & clean
+  _subnet_id_candidates_raw = concat(local._ids_from_input, local._ids_from_filters)
+  subnet_id_candidates      = [for id in local._subnet_id_candidates_raw : trimspace(id) if id != null && trimspace(id) != ""]
+
+  # Choose one deterministically if allowed
   subnet_id_effective = (
-    length(local.subnet_id_candidates) == 1 ? local.subnet_id_candidates[0] :
-    (var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1 ? local.subnet_id_candidates[0] : "")
+    length(local.subnet_id_candidates) == 1
+      ? local.subnet_id_candidates[0]
+      : (
+          var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1
+            ? sort(local.subnet_id_candidates)[0]
+            : ""
+        )
   )
 }
 
-# Enforce: must resolve to exactly one ID (unless you passed subnet_ID)
+# Enforce: must resolve to exactly one ID (unless user explicitly set a unique one)
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -72,18 +83,22 @@ data "aws_subnet" "effective" {
 #############################################
 
 data "aws_ssm_parameter" "ec2_hana_sg" {
+  # Expects: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
 data "aws_ssm_parameter" "ec2_nw_sg" {
+  # Expects: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
+  # Expects: /<env>/iam/role/instance-profile/iam-role-sap-ec2-ha/name
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
 
 data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
+  # Expects: /<env>/iam/role/instance-profile/iam-role-sap-ec2/name
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
 }
 
@@ -91,7 +106,8 @@ locals {
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (var.ha
+      : (
+          var.ha
           ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
           : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
         )
@@ -99,9 +115,13 @@ locals {
 
   _sg_from_input = try(var.security_group_ids, [])
 
-  resolved_security_group_ids = length(local._sg_from_input) > 0 ? local._sg_from_input : [
-    var.application_code == "hana"
-      ? data.aws_ssm_parameter.ec2_hana_sg.value
-      : data.aws_ssm_parameter.ec2_nw_sg.value
-  ]
+  resolved_security_group_ids = (
+    length(local._sg_from_input) > 0
+      ? local._sg_from_input
+      : [
+          var.application_code == "hana"
+            ? data.aws_ssm_parameter.ec2_hana_sg.value
+            : data.aws_ssm_parameter.ec2_nw_sg.value
+        ]
+  )
 }
