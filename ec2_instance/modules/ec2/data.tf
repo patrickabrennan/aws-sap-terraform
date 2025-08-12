@@ -2,7 +2,7 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
-# Gather candidates by VPC + AZ (+ optional tag filters) only if no explicit ID
+# Filtered search by VPC+AZ (+ optional tag/wildcard) — only if no explicit ID
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -35,20 +35,39 @@ data "aws_subnets" "by_filters" {
   }
 }
 
+# AZ-only search (no tag/wildcard filters) — used as a fallback
+data "aws_subnets" "az_only" {
+  count = var.subnet_ID == "" ? 1 : 0
+
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+}
+
 locals {
-  # Build candidate list: explicit ID (if set) has priority; otherwise from filters
+  # Candidates from input and lookups
   _ids_from_input   = var.subnet_ID != "" ? [var.subnet_ID] : []
   _ids_from_filters = var.subnet_ID == "" ? try(data.aws_subnets.by_filters[0].ids, []) : []
+  _ids_from_azonly  = var.subnet_ID == "" ? try(data.aws_subnets.az_only[0].ids, [])   : []
 
-  _raw_candidates   = concat(local._ids_from_input, local._ids_from_filters)
+  # Use filtered results if any; otherwise fall back to AZ-only results
+  _pool = length(local._ids_from_filters) > 0 ? local._ids_from_filters : local._ids_from_azonly
 
-  # Clean up: drop null/empty and dedupe, then sort for deterministic "first"
+  _raw_candidates = concat(local._ids_from_input, local._pool)
+
+  # Clean & normalize
   subnet_id_candidates = sort(distinct([
     for id in local._raw_candidates : trimspace(id)
     if id != null && trimspace(id) != ""
   ]))
 
-  # Decide outcome according to selection mode
+  # Decide outcome by selection mode
   subnet_id_effective = (
     length(local.subnet_id_candidates) == 1
       ? local.subnet_id_candidates[0]
@@ -58,30 +77,26 @@ locals {
             : ""
         )
   )
-
-  # Precondition helpers
-  subnet_condition  = local.subnet_id_effective != ""
-  subnet_error_msg  = <<-EOT
-    Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
-    Provide subnet_ID or narrow with:
-      - subnet_tag_key + subnet_tag_value (e.g., Tier=app)
-      - subnet_name_wildcard (e.g., "*public*" or "*private*")
-    Or auto-pick by setting:
-      - subnet_selection_mode = "first"
-  EOT
 }
 
-# Enforce the rule (but keep the data lookup guarded so it never crashes)
+# Enforce “must have exactly one” unless you asked for "first"
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
-      condition     = local.subnet_condition
-      error_message = local.subnet_error_msg
+      condition     = local.subnet_id_effective != ""
+      error_message = <<-EOT
+        Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
+        Provide subnet_ID or narrow with:
+          - subnet_tag_key + subnet_tag_value (e.g., Tier=app)
+          - subnet_name_wildcard (e.g., "*public*" or "*private*")
+        Or auto-pick by setting:
+          - subnet_selection_mode = "first"
+      EOT
     }
   }
 }
 
-# ID-based lookup — guarded by count so it never runs if empty
+# ID-based (safe) lookup, guarded by count so it never runs with an empty ID
 data "aws_subnet" "effective" {
   count = local.subnet_id_effective != "" ? 1 : 0
   id    = local.subnet_id_effective
@@ -92,22 +107,18 @@ data "aws_subnet" "effective" {
 #############################################
 
 data "aws_ssm_parameter" "ec2_hana_sg" {
-  # Expects: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
 data "aws_ssm_parameter" "ec2_nw_sg" {
-  # Expects: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
-  # Expects: /<env>/iam/role/instance-profile/iam-role-sap-ec2-ha/name
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
 
 data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
-  # Expects: /<env>/iam/role/instance-profile/iam-role-sap-ec2/name
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
 }
 
