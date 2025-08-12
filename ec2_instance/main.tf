@@ -7,7 +7,10 @@ module "ec2_instances" {
   source   = "./modules/ec2"
   for_each = local.effective_instances_to_create
 
+  vpc_id = data.aws_vpc.sap.id
+
   vpc_id            = data.aws_vpc.sap.id
+
   availability_zone = each.value.availability_zone
 
   aws_region       = var.aws_region
