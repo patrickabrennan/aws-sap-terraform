@@ -221,3 +221,17 @@ variable "vip_subnet_selection_mode" {
   type        = string
   default     = "unique"
 }
+
+# Optional override: if non-empty, use this IAM instance profile name instead of SSM-derived value
+variable "iam_instance_profile_name_override" {
+  description = "Optional explicit IAM instance profile name. If set, overrides SSM-based lookup."
+  type        = string
+  default     = ""
+}
+
+# Optional list of SG IDs for the primary ENI. If empty, module will pick SG by application_code using SSM.
+variable "security_group_ids" {
+  description = "Security group IDs to attach to the primary ENI. Leave empty to auto-select from SSM by application_code."
+  type        = list(string)
+  default     = []
+}
