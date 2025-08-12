@@ -2,7 +2,7 @@
 # VIP subnet resolution (per-instance AZ)
 ############################################
 
-# Only look up VIP subnets when enabled and no explicit ID is given
+# Only look up VIP subnets when the feature is enabled and no explicit ID is given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -36,13 +36,15 @@ data "aws_subnets" "vip" {
 }
 
 locals {
+  _vip_candidates_from_filters = try(data.aws_subnets.vip[0].ids, [])
+
   vip_candidate_ids = (
     var.vip_subnet_id != ""
       ? [var.vip_subnet_id]
-      : (var.enable_vip_eni ? try(data.aws_subnets.vip[0].ids, []) : [])
+      : (var.enable_vip_eni ? local._vip_candidates_from_filters : [])
   )
 
-  vip_need_unique = var.vip_subnet_selection_mode != "first"
+  vip_need_unique = lower(var.vip_subnet_selection_mode) != "first"
 
   vip_subnet_id_effective = (
     length(local.vip_candidate_ids) == 0 ? "" :
@@ -52,9 +54,9 @@ locals {
   )
 }
 
-# Enforce rule only when VIP ENI is enabled
+# Enforce rule only when VIP ENI is enabled and uniqueness is required
 resource "null_resource" "assert_vip_subnet" {
-  count = var.enable_vip_eni ? 1 : 0
+  count = (var.enable_vip_eni && local.vip_need_unique) ? 1 : 0
 
   lifecycle {
     precondition {
@@ -79,8 +81,20 @@ resource "aws_network_interface" "ha_vip" {
   description       = "${var.hostname}-vip"
   source_dest_check = var.application_code == "hana" ? false : true
 
-  # Reuse the same resolved SGs as the primary ENI (non-empty by precondition)
-  security_groups = local.resolved_security_group_ids
+  security_groups = (
+    length(var.security_group_ids) > 0
+      ? var.security_group_ids
+      : (
+          var.application_code == "hana"
+            ? [data.aws_ssm_parameter.ec2_hana_sg.value]
+            : [data.aws_ssm_parameter.ec2_nw_sg.value]
+        )
+  )
+
+  # Make sure subnet+SG assertions run before we touch the ENI
+  depends_on = [
+    null_resource.assert_sg_nonempty
+  ]
 
   tags = merge(
     var.ec2_tags,
@@ -91,6 +105,4 @@ resource "aws_network_interface" "ha_vip" {
       Hostname    = var.hostname
     }
   )
-
-  depends_on = [null_resource.assert_vip_subnet]
 }
