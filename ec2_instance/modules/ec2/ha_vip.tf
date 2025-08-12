@@ -2,7 +2,7 @@
 # VIP subnet resolution (per-instance AZ)
 ############################################
 
-# Only look up VIP subnets when the feature is enabled and no explicit ID is given
+# Only look up VIP subnets when enabled and no explicit ID given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -36,26 +36,27 @@ data "aws_subnets" "vip" {
 }
 
 locals {
-  # Build the raw candidate list from the explicit ID or the lookup
   _vip_candidate_ids_raw = (
     var.vip_subnet_id != ""
-      ? [var.vip_subnet_id]
+      ? [trimspace(var.vip_subnet_id)]
       : (var.enable_vip_eni ? try(data.aws_subnets.vip[0].ids, []) : [])
   )
 
-  # Sanitize and sort deterministically
   vip_candidate_ids = distinct(sort([
     for id in local._vip_candidate_ids_raw : id
     if id != null && trimspace(id) != ""
   ]))
 
-  vip_need_unique = var.vip_subnet_selection_mode != "first"
+  vip_need_unique         = var.vip_subnet_selection_mode != "first"
+  vip_has_any             = length(local.vip_candidate_ids) >= 1
+  vip_is_exactly_one      = length(local.vip_candidate_ids) == 1
+
+  vip_subnet_condition    = local.vip_need_unique ? local.vip_is_exactly_one : local.vip_has_any
 
   vip_subnet_id_effective = (
-    length(local.vip_candidate_ids) == 0 ? "" :
     local.vip_need_unique
-      ? (length(local.vip_candidate_ids) == 1 ? local.vip_candidate_ids[0] : "")
-      : local.vip_candidate_ids[0]
+      ? (local.vip_is_exactly_one ? local.vip_candidate_ids[0] : "")
+      : (local.vip_has_any ? local.vip_candidate_ids[0] : "")
   )
 }
 
@@ -65,7 +66,7 @@ resource "null_resource" "assert_vip_subnet" {
 
   lifecycle {
     precondition {
-      condition     = local.vip_subnet_id_effective != ""
+      condition     = local.vip_subnet_condition
       error_message = <<-EOT
         VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.
         Refine selection by setting one of:
