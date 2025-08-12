@@ -1,3 +1,11 @@
+subnet_name_wildcard   = "sap_vpc_*b"     # or "*private*" — must match your subnet Name tags
+subnet_selection_mode  = "first"        # if more than one match, auto-pick the first
+
+# VIP ENI subnet selection
+vip_subnet_name_wildcard   = "sap_vpc_*b"
+vip_subnet_selection_mode  = "first"
+
+
 default_availability_zone = "us-east-1a"
 ha_azs                     = ["us-east-1a", "us-east-1b"]
 enable_vip_eni = true
