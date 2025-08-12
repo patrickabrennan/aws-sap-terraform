@@ -54,9 +54,9 @@ data "aws_vpc" "sap" {
 }
 
 # Final resolved VPC used by the rest of the root module
-data "aws_vpc" "sap" {
-  id = local.vpc_id_effective
-}
+#data "aws_vpc" "sap" {
+#  id = local.vpc_id_effective
+#}
 
 ############################################
 # SSM lookups for security group IDs
