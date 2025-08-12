@@ -2,7 +2,6 @@
 # VIP subnet resolution (per-instance AZ)
 ############################################
 
-# Only look up VIP subnets when the feature is enabled and no explicit ID is given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -16,7 +15,6 @@ data "aws_subnets" "vip" {
     values = [var.availability_zone]
   }
 
-  # Optional exact tag
   dynamic "filter" {
     for_each = (var.vip_subnet_tag_key != "" && var.vip_subnet_tag_value != "") ? [1] : []
     content {
@@ -25,7 +23,6 @@ data "aws_subnets" "vip" {
     }
   }
 
-  # Optional Name filter
   dynamic "filter" {
     for_each = (var.vip_subnet_name_wildcard != "") ? [1] : []
     content {
@@ -37,7 +34,6 @@ data "aws_subnets" "vip" {
 
 locals {
   _vip_candidates_from_filters = try(data.aws_subnets.vip[0].ids, [])
-
   vip_candidate_ids = (
     var.vip_subnet_id != ""
       ? [var.vip_subnet_id]
@@ -45,23 +41,26 @@ locals {
   )
 
   vip_need_unique = lower(var.vip_subnet_selection_mode) != "first"
+  _vip_picked_first = length(local.vip_candidate_ids) > 0 ? sort(local.vip_candidate_ids)[0] : ""
 
   vip_subnet_id_effective = (
     length(local.vip_candidate_ids) == 0 ? "" :
     local.vip_need_unique
       ? (length(local.vip_candidate_ids) == 1 ? local.vip_candidate_ids[0] : "")
-      : local.vip_candidate_ids[0]
+      : local._vip_picked_first
   )
 }
 
-# Enforce rule only when VIP ENI is enabled and uniqueness is required
 resource "null_resource" "assert_vip_subnet" {
-  count = (var.enable_vip_eni && local.vip_need_unique) ? 1 : 0
+  count = var.enable_vip_eni ? 1 : 0
 
   lifecycle {
     precondition {
-      condition     = local.vip_subnet_id_effective != ""
-      error_message = <<-EOT
+      condition = local.vip_need_unique
+        ? (local.vip_subnet_id_effective != "")
+        : (length(local.vip_candidate_ids) > 0)
+
+      error_message = local.vip_need_unique ? <<-EOT
         VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.
         Refine selection by setting one of:
           - vip_subnet_tag_key + vip_subnet_tag_value
@@ -69,11 +68,16 @@ resource "null_resource" "assert_vip_subnet" {
         Or allow auto-pick by setting:
           - vip_subnet_selection_mode = "first"
       EOT
+      : <<-EOT
+        VIP ENI cannot be created: no subnet matched in ${var.vpc_id} / ${var.availability_zone}.
+        Provide vip_subnet_id or narrow with:
+          - vip_subnet_tag_key + vip_subnet_tag_value
+          - vip_subnet_name_wildcard
+      EOT
     }
   }
 }
 
-# Create the VIP ENI (if enabled)
 resource "aws_network_interface" "ha_vip" {
   count = var.enable_vip_eni ? 1 : 0
 
@@ -91,10 +95,7 @@ resource "aws_network_interface" "ha_vip" {
         )
   )
 
-  # Make sure subnet+SG assertions run before we touch the ENI
-  depends_on = [
-    null_resource.assert_sg_nonempty
-  ]
+  depends_on = [null_resource.assert_sg_nonempty]
 
   tags = merge(
     var.ec2_tags,
