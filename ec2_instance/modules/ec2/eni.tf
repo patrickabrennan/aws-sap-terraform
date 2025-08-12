@@ -1,13 +1,20 @@
+############################################
+# Primary ENI for the instance
+############################################
+
 resource "aws_network_interface" "this" {
   subnet_id         = data.aws_subnet.effective.id
-  description       = "${var.hostname}-eni"
-  source_dest_check = var.application_code == "hana" ? false : true
+  description       = "${var.hostname}-primary"
+  source_dest_check = true
 
-  # We assert non-empty SGs in data.tf, so set directly (no ternary).
+  # Optional static private IP, else AWS assigns one
+  dynamic "private_ips" {
+    for_each = var.private_ip != null && trim(var.private_ip) != "" ? [1] : []
+    content  = [var.private_ip]
+  }
+
+  # Resolved SGs from data.tf locals
   security_groups = local.resolved_security_group_ids
-
-  # Only send a static IP if you set one
-  private_ips = (var.private_ip != null && var.private_ip != "") ? [var.private_ip] : null
 
   tags = merge(
     var.ec2_tags,
@@ -16,11 +23,7 @@ resource "aws_network_interface" "this" {
       Environment = var.environment
       Application = var.application_code
       Hostname    = var.hostname
+      Role        = "primary-eni"
     }
   )
-
-  depends_on = [
-    null_resource.assert_single_subnet,
-    null_resource.assert_sg_nonempty
-  ]
 }
