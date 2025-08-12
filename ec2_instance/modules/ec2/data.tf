@@ -45,22 +45,29 @@ locals {
   # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
   need_unique = lower(var.subnet_selection_mode) != "first"
 
+  # deterministically pick the first if many
+  _picked_first = length(local.subnet_id_candidates) > 0 ? sort(local.subnet_id_candidates)[0] : ""
+
   subnet_id_effective = (
     length(local.subnet_id_candidates) == 0 ? "" :
     local.need_unique
       ? (length(local.subnet_id_candidates) == 1 ? local.subnet_id_candidates[0] : "")
-      : local.subnet_id_candidates[0]
+      : local._picked_first
   )
 }
 
-# Enforce the selection rule only when we require uniqueness
+# Enforce the selection rule only when uniqueness is required;
+# when selection_mode="first", just require that we found at least one.
 resource "null_resource" "assert_single_subnet" {
-  count = local.need_unique ? 1 : 0
+  count = 1
 
   lifecycle {
     precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = <<-EOT
+      condition = local.need_unique
+        ? (local.subnet_id_effective != "")
+        : (length(local.subnet_id_candidates) > 0)
+
+      error_message = local.need_unique ? <<-EOT
         Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
         Refine selection by setting one of:
           - subnet_tag_key + subnet_tag_value       (e.g., Tier=app)
@@ -68,11 +75,17 @@ resource "null_resource" "assert_single_subnet" {
         Or allow auto-pick by setting:
           - subnet_selection_mode = "first"
       EOT
+      : <<-EOT
+        No subnets matched in ${var.vpc_id} / ${var.availability_zone}.
+        Provide subnet_ID or narrow with:
+          - subnet_tag_key + subnet_tag_value
+          - subnet_name_wildcard (e.g., "*public*" or "*private*")
+      EOT
     }
   }
 }
 
-# Finally, expose the chosen subnet (resolved by ID, never by filters)
+# Finally, expose the chosen subnet (resolved strictly by ID)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
@@ -82,12 +95,10 @@ data "aws_subnet" "effective" {
 #############################################
 
 data "aws_ssm_parameter" "ec2_hana_sg" {
-  # Expects: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
 data "aws_ssm_parameter" "ec2_nw_sg" {
-  # Expects: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
@@ -114,9 +125,6 @@ locals {
         )
   )
 
-  # Effective security group IDs for the primary ENI:
-  # - if caller passes var.security_group_ids, use them
-  # - otherwise choose from SSM based on application_code
   resolved_security_group_ids = (
     length(var.security_group_ids) > 0
       ? var.security_group_ids
@@ -128,7 +136,6 @@ locals {
   )
 }
 
-# Ensure SGs resolved
 resource "null_resource" "assert_sg_nonempty" {
   lifecycle {
     precondition {
