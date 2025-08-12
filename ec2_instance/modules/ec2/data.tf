@@ -42,8 +42,8 @@ locals {
   # Normalize input (turn null into "")
   _subnet_id_input = try(coalesce(var.subnet_ID, ""), "")
 
-  # Build raw candidate list
-  _subnet_id_candidates_raw = _subnet_id_input != "" ? [_subnet_id_input] : local._candidates_from_filters
+  # Build raw candidate list  ✅ use local. prefixes
+  _subnet_id_candidates_raw = local._subnet_id_input != "" ? [local._subnet_id_input] : local._candidates_from_filters
 
   # Remove nulls and empty strings
   subnet_id_candidates = [for id in local._subnet_id_candidates_raw : id if id != null && trim(id) != ""]
@@ -101,13 +101,11 @@ data "aws_subnet" "effective" {
 
 # HANA node SG id (db1)
 data "aws_ssm_parameter" "ec2_hana_sg" {
-  # Expects something like: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
 # NetWeaver/app node SG id (app1)
 data "aws_ssm_parameter" "ec2_nw_sg" {
-  # Expects something like: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
@@ -115,12 +113,10 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 # Resolve IAM Instance Profile name via SSM
 ###########################################
 
-# HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2-ha/name
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
 
-# Non-HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2/name
 data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
 }
