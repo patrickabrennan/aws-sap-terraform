@@ -1,8 +1,9 @@
-subnet_name_wildcard  = "sap_vpc_*"  # or "*private*" / "*public*" per your tags
+subnet_name_wildcard  = "sap_vpc_*"     # or use subnet_tag_key/value
 subnet_selection_mode = "first"
 
 vip_subnet_name_wildcard  = "sap_vpc_*"
 vip_subnet_selection_mode = "first"
+
 
 
 
