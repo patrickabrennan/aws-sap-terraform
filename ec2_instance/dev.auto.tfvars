@@ -1,9 +1,11 @@
-subnet_name_wildcard  = "sap_vpc_*"     # or use subnet_tag_key/value
-subnet_selection_mode = "first"
+# Use tag-based narrowing instead of Name wildcard
+subnet_tag_key        = "sap_relevant"
+subnet_tag_value      = "true"
+subnet_selection_mode = "first"   # keep 'first' to auto-pick if >1 still match
 
-vip_subnet_name_wildcard  = "sap_vpc_*"
+vip_subnet_tag_key        = "sap_relevant"
+vip_subnet_tag_value      = "true"
 vip_subnet_selection_mode = "first"
-
 
 
 
