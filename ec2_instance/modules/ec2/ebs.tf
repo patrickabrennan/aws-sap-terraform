@@ -56,14 +56,6 @@ resource "aws_volume_attachment" "all_attachments" {
   device_name = lookup(local.device_map, each.key, "/dev/xvdf")
 }
 
-resource "aws_volume_attachment" "all_attachments" {
-  for_each = local.disks_map
-
-  device_name = coalesce(
-    try(each.value.device, null),
-    "/dev/xvd${local.device_letters[(try(each.value.disk_index, 0)) % length(local.device_letters)]}"
-  )
-
   volume_id   = aws_ebs_volume.all_volumes[each.key].id
   instance_id = aws_instance.this.id
 
