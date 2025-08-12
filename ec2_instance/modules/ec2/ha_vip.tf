@@ -41,10 +41,10 @@ locals {
   # Normalize input (turn null into "")
   _vip_id_input = try(coalesce(var.vip_subnet_id, ""), "")
 
-  # Build raw candidate list (only when feature enabled)
+  # Build raw candidate list (only when feature enabled)  ✅ use local. prefixes
   _vip_candidate_ids_raw = (
-    _vip_id_input != "" ? [_vip_id_input] :
-    (var.enable_vip_eni ? _vip_candidates_from_filters : [])
+    local._vip_id_input != "" ? [local._vip_id_input] :
+    (var.enable_vip_eni ? local._vip_candidates_from_filters : [])
   )
 
   # Remove nulls and empty strings
