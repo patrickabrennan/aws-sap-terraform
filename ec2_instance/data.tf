@@ -47,6 +47,12 @@ resource "null_resource" "assert_vpc" {
   }
 }
 
+# after your locals + null_resource.assert_vpc
+data "aws_vpc" "sap" {
+  id         = local.vpc_id_effective
+  depends_on = [null_resource.assert_vpc]
+}
+
 # Final resolved VPC used by the rest of the root module
 data "aws_vpc" "sap" {
   id = local.vpc_id_effective
