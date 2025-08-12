@@ -122,16 +122,19 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 ###########################################
 # Resolved security groups for ENIs
 ###########################################
-
 locals {
-  # Prefer caller-supplied SGs, else fall back to SSM based on application_code
+  # Prefer caller-supplied SGs; else pick from SSM based on application_code
   _sg_from_input = try(var.security_group_ids, [])
 
-  _sg_from_ssm = var.application_code == "hana"
-    ? [data.aws_ssm_parameter.ec2_hana_sg.value]
-    : [data.aws_ssm_parameter.ec2_nw_sg.value]
+  # Wrap as a single expression (no fragile newline before '?')
+  _sg_from_ssm = [
+    var.application_code == "hana"
+      ? data.aws_ssm_parameter.ec2_hana_sg.value
+      : data.aws_ssm_parameter.ec2_nw_sg.value
+  ]
 
   resolved_security_group_ids = length(local._sg_from_input) > 0
     ? local._sg_from_input
     : local._sg_from_ssm
 }
+
