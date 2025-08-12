@@ -111,3 +111,23 @@ variable "vpc_name" {
   type        = string
   default     = "sap_vpc"
 }
+
+# Root module variables used by data.tf for VPC resolution
+
+variable "vpc_name" {
+  description = "Optional: match VPC by Name tag (exact)"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_tag_key" {
+  description = "Optional: arbitrary VPC tag key to match (used with vpc_tag_value)"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_tag_value" {
+  description = "Optional: arbitrary VPC tag value to match (used with vpc_tag_key)"
+  type        = string
+  default     = ""
+}
