@@ -80,6 +80,13 @@ variable "enable_vip_eip" {
   description = "Attach a public EIP to the VIP ENI"
 }
 
+# NEW: allow explicit VIP subnet id from root (optional)
+variable "vip_subnet_id" {
+  type        = string
+  default     = ""
+  description = "Optional explicit VIP Subnet ID. Leave empty to auto-select by VPC+AZ (+filters)."
+}
+
 variable "vip_subnet_tag_key" {
   type        = string
   default     = ""
