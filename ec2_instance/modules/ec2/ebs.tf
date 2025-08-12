@@ -111,8 +111,18 @@ resource "aws_volume_attachment" "all_attachments" {
   volume_id   = each.value.id
   instance_id = aws_instance.this.id
 
-  skip_destroy = false
-  force_detach = true
+  # --- Ensures safe detach before instance delete/replace ---
+  skip_destroy = false         # actually destroy the attachment
+  force_detach = true          # API-level force, handles busy devices
+  timeouts {
+    delete = "15m"             # give AWS time to detach cleanly
+  }
+  # When the instance is replaced, attachments are replaced first (detached),
+  # so the new instance can re-attach cleanly.
+  lifecycle {
+    replace_triggered_by = [aws_instance.this.id]
+  }
+  # ----------------------------------------------------------
 
   depends_on = [aws_instance.this]
 }
