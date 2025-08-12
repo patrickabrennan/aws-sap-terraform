@@ -57,13 +57,10 @@ locals {
   # Prefer filtered list if not empty; else fall back to AZ-only
   _candidates_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
   _candidates_from_azonly  = try(data.aws_subnets.az_only[0].ids, [])
-
-  _candidates_union = coalescelist(local._candidates_from_filters, local._candidates_from_azonly)
+  _candidates_union        = coalescelist(local._candidates_from_filters, local._candidates_from_azonly)
 
   # Candidate IDs: explicit subnet_ID wins; otherwise the union (sorted for determinism)
-  subnet_id_candidates = var.subnet_ID != ""
-    ? [var.subnet_ID]
-    : distinct(sort(local._candidates_union))
+  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : distinct(sort(local._candidates_union))
 
   # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
   need_unique = var.subnet_selection_mode != "first"
