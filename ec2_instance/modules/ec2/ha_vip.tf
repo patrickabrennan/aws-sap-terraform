@@ -2,7 +2,6 @@
 # VIP subnet resolution (per-instance AZ)
 ############################################
 
-# Only look up VIP subnets when enabled and no explicit ID is given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -16,7 +15,6 @@ data "aws_subnets" "vip" {
     values = [var.availability_zone]
   }
 
-  # Optional exact tag
   dynamic "filter" {
     for_each = (var.vip_subnet_tag_key != "" && var.vip_subnet_tag_value != "") ? [1] : []
     content {
@@ -25,7 +23,6 @@ data "aws_subnets" "vip" {
     }
   }
 
-  # Optional Name wildcard (e.g., "*public*" or "*private*")
   dynamic "filter" {
     for_each = (var.vip_subnet_name_wildcard != "") ? [1] : []
     content {
@@ -36,20 +33,15 @@ data "aws_subnets" "vip" {
 }
 
 locals {
-  vip_candidate_ids = (
-    var.vip_subnet_id != ""
-      ? [var.vip_subnet_id]
-      : (var.enable_vip_eni ? try(data.aws_subnets.vip[0].ids, []) : [])
-  )
+  vip_candidate_ids = (var.vip_subnet_id != "" ? [var.vip_subnet_id] : (var.enable_vip_eni ? try(data.aws_subnets.vip[0].ids, []) : []))
 
-  vip_subnet_id_effective = (
-    length(local.vip_candidate_ids) == 1
-      ? local.vip_candidate_ids[0]
-      : (var.vip_subnet_selection_mode == "first" && length(local.vip_candidate_ids) > 1 ? local.vip_candidate_ids[0] : "")
+  # **Fix**: single-line ternary
+  vip_subnet_id_effective = (length(local.vip_candidate_ids) == 1
+    ? local.vip_candidate_ids[0]
+    : (var.vip_subnet_selection_mode == "first" && length(local.vip_candidate_ids) > 1 ? local.vip_candidate_ids[0] : "")
   )
 }
 
-# Enforce rule only when VIP ENI is enabled
 resource "null_resource" "assert_vip_subnet" {
   count = var.enable_vip_eni ? 1 : 0
 
@@ -68,7 +60,6 @@ resource "null_resource" "assert_vip_subnet" {
   }
 }
 
-# Create the VIP ENI (if enabled)
 resource "aws_network_interface" "ha_vip" {
   count = var.enable_vip_eni ? 1 : 0
 
