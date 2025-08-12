@@ -17,38 +17,43 @@ locals {
   ]
 }
 
+# --- EBS volumes ---
 resource "aws_ebs_volume" "all_volumes" {
-  for_each          = local.disks_map
-  availability_zone = var.availability_zone
+  # keep your existing for_each
+  for_each = local.normalized_disks
 
-  size       = tonumber(each.value.size)
-  type       = lower(each.value.type)
-  # Encrypt only when we actually have a KMS key ARN
-  encrypted  = local.kms_key_arn_effective != "" ? true : null
-  kms_key_id = local.kms_key_arn_effective != "" ? local.kms_key_arn_effective : null
+  # CRITICAL: use the instance's AZ derived from the selected subnet
+  availability_zone = local.instance_az_effective
 
-  #encrypted  = true
-  #kms_key_id = var.kms_key_arn
+  size       = each.value.size
+  type       = each.value.type
+  iops       = try(each.value.iops, null)
+  throughput = try(each.value.throughput, null)
 
-  # Only set IOPS when supported and > 0 (gp3, io1, io2)
-  iops = (
-    contains(["gp3","io1","io2"], each.value.type) && try(tonumber(each.value.iops), 0) > 0
-    ? tonumber(each.value.iops)
-    : null
+  # optional KMS
+  kms_key_id = var.kms_key_arn != "" ? var.kms_key_arn : null
+  encrypted  = var.kms_key_arn != "" ? true : null
+
+  tags = merge(
+    var.ec2_tags,
+    { Name = "${var.hostname}|${format("%03d", each.value.disk_index)}|${each.value.name}" }
   )
 
-  # Only set throughput for gp3 and > 0
-  throughput = (
-    each.value.type == "gp3" && try(tonumber(each.value.throughput), 0) > 0
-    ? tonumber(each.value.throughput)
-    : null
-  )
+  lifecycle {
+    create_before_destroy = true
+  }
 
-  tags = merge(var.ec2_tags, {
-    Name        = "${var.hostname}-${each.value.name}-${format("%03d", each.value.disk_index)}"
-    environment = var.environment
-    role        = "data"
-  })
+  # ensures the subnet (and its AZ) has been resolved first
+  depends_on = [data.aws_subnet.effective]
+}
+
+# --- Attachments ---
+resource "aws_volume_attachment" "all_attachments" {
+  for_each = aws_ebs_volume.all_volumes
+
+  instance_id = aws_instance.this.id
+  volume_id   = each.value.id
+  device_name = lookup(local.device_map, each.key, "/dev/xvdf")
 }
 
 resource "aws_volume_attachment" "all_attachments" {
