@@ -23,7 +23,6 @@ locals {
   # Default disk layouts
   #############################
   defaults_hana = [
-    # You can tweak sizes/types here or pass custom_ebs_config to override
     { name = "data",   type = coalesce(var.hana_data_storage_type,   "gp3"), size = lookup(local.default_size_for, "data",   512) },
     { name = "log",    type = coalesce(var.hana_logs_storage_type,   "gp3"), size = lookup(local.default_size_for, "log",    256) },
     { name = "backup", type = coalesce(var.hana_backup_storage_type, "st1"), size = lookup(local.default_size_for, "backup", 1024) },
@@ -37,10 +36,12 @@ locals {
     { name = "swap",   type = "gp3", size = lookup(local.default_size_for, "swap",    32) }
   ]
 
-  # Source list: custom override > HANA > NW
-  source_disks = length(var.custom_ebs_config) > 0
-    ? var.custom_ebs_config
-    : (var.application_code == "hana" ? local.defaults_hana : local.defaults_nw)
+  # ---- FIXED: keep the whole ternary in a single expression ----
+  source_disks = (
+    length(var.custom_ebs_config) > 0
+      ? var.custom_ebs_config
+      : (var.application_code == "hana" ? local.defaults_hana : local.defaults_nw)
+  )
 
   # Expand "disk_nb" into multiple entries; default disk_index is sequential
   expanded_disks = flatten([
@@ -95,7 +96,7 @@ locals {
 resource "aws_ebs_volume" "all_volumes" {
   for_each = local.normalized_disks
 
-  # CRITICAL: Create volumes in the instance/subnet AZ
+  # Create volumes in the instance/subnet AZ
   availability_zone = local.ebs_instance_az_effective
 
   size = each.value.size
@@ -132,7 +133,7 @@ resource "aws_ebs_volume" "all_volumes" {
     create_before_destroy = true
   }
 
-  # Make sure the subnet/ AZ selection happened first
+  # Ensure subnet/AZ selection is resolved first
   depends_on = [null_resource.assert_single_subnet]
 }
 
