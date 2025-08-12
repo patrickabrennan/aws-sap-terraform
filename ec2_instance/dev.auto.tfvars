@@ -1,11 +1,8 @@
-subnet_selection_mode     = "first"
-vip_subnet_selection_mode = "first"
-# dev.auto.tfvars
-#subnet_name_wildcard       = "sap_vpc_*"     # NOT "...*b"
-#subnet_selection_mode      = "first"
+subnet_name_wildcard  = "sap_vpc_*"  # or "*private*" / "*public*" per your tags
+subnet_selection_mode = "first"
 
-#vip_subnet_name_wildcard   = "sap_vpc_*"
-#vip_subnet_selection_mode  = "first"
+vip_subnet_name_wildcard  = "sap_vpc_*"
+vip_subnet_selection_mode = "first"
 
 
 
