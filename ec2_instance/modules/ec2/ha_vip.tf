@@ -2,7 +2,7 @@
 # VIP subnet resolution (per-instance AZ)
 ############################################
 
-# Only look up VIP subnets when the feature is enabled and no explicit ID is given
+# Only look up VIP subnets when enabled and no explicit ID is given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -79,12 +79,8 @@ resource "aws_network_interface" "ha_vip" {
   description       = "${var.hostname}-vip"
   source_dest_check = var.application_code == "hana" ? false : true
 
-  # Reuse the same SGs as instance (from SSM lookups in data.tf)
-  security_groups = [
-    var.application_code == "hana"
-      ? data.aws_ssm_parameter.ec2_hana_sg.value
-      : data.aws_ssm_parameter.ec2_nw_sg.value
-  ]
+  # Reuse the same resolved SGs as the primary ENI (non-empty by precondition)
+  security_groups = local.resolved_security_group_ids
 
   tags = merge(
     var.ec2_tags,
@@ -95,4 +91,6 @@ resource "aws_network_interface" "ha_vip" {
       Hostname    = var.hostname
     }
   )
+
+  depends_on = [null_resource.assert_vip_subnet]
 }
