@@ -2,7 +2,7 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
-# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
+# Gather candidates by VPC + AZ (+ optional tag filters) only if no explicit ID
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -36,46 +36,55 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  # Raw candidates:
-  _ids_from_filters = var.subnet_ID == "" ? try(data.aws_subnets.by_filters[0].ids, []) : []
+  # Build candidate list: explicit ID (if set) has priority; otherwise from filters
   _ids_from_input   = var.subnet_ID != "" ? [var.subnet_ID] : []
+  _ids_from_filters = var.subnet_ID == "" ? try(data.aws_subnets.by_filters[0].ids, []) : []
 
-  # Merge & clean
-  _subnet_id_candidates_raw = concat(local._ids_from_input, local._ids_from_filters)
-  subnet_id_candidates      = [for id in local._subnet_id_candidates_raw : trimspace(id) if id != null && trimspace(id) != ""]
+  _raw_candidates   = concat(local._ids_from_input, local._ids_from_filters)
 
-  # Choose one deterministically if allowed
+  # Clean up: drop null/empty and dedupe, then sort for deterministic "first"
+  subnet_id_candidates = sort(distinct([
+    for id in local._raw_candidates : trimspace(id)
+    if id != null && trimspace(id) != ""
+  ]))
+
+  # Decide outcome according to selection mode
   subnet_id_effective = (
     length(local.subnet_id_candidates) == 1
       ? local.subnet_id_candidates[0]
       : (
           var.subnet_selection_mode == "first" && length(local.subnet_id_candidates) > 1
-            ? sort(local.subnet_id_candidates)[0]
+            ? local.subnet_id_candidates[0]
             : ""
         )
   )
+
+  # Precondition helpers
+  subnet_condition  = local.subnet_id_effective != ""
+  subnet_error_msg  = <<-EOT
+    Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
+    Provide subnet_ID or narrow with:
+      - subnet_tag_key + subnet_tag_value (e.g., Tier=app)
+      - subnet_name_wildcard (e.g., "*public*" or "*private*")
+    Or auto-pick by setting:
+      - subnet_selection_mode = "first"
+  EOT
 }
 
-# Enforce: must resolve to exactly one ID (unless user explicitly set a unique one)
+# Enforce the rule (but keep the data lookup guarded so it never crashes)
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
-      condition     = local.subnet_id_effective != ""
-      error_message = <<-EOT
-        Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
-        Provide subnet_ID or narrow with:
-          - subnet_tag_key + subnet_tag_value (e.g., Tier=app)
-          - subnet_name_wildcard (e.g., "*public*" or "*private*")
-        Or auto-pick by setting:
-          - subnet_selection_mode = "first"
-      EOT
+      condition     = local.subnet_condition
+      error_message = local.subnet_error_msg
     }
   }
 }
 
-# ✅ ID-based lookup (cannot return multiple)
+# ID-based lookup — guarded by count so it never runs if empty
 data "aws_subnet" "effective" {
-  id = local.subnet_id_effective
+  count = local.subnet_id_effective != "" ? 1 : 0
+  id    = local.subnet_id_effective
 }
 
 #############################################
