@@ -1,12 +1,10 @@
-# --- Global subnet narrowing (no hardcoding of IDs) ---
-subnet_tag_key        = "Tier"
-subnet_tag_value      = "app"
-subnet_selection_mode = "unique"    # or "first" if you prefer auto-pick when >1
+# dev.auto.tfvars
+subnet_name_wildcard       = "sap_vpc_*"     # NOT "...*b"
+subnet_selection_mode      = "first"
 
-# If your VIP ENI should use the same subnets, mirror the filters:
-vip_subnet_tag_key        = "Tier"
-vip_subnet_tag_value      = "app"
-vip_subnet_selection_mode = "unique"
+vip_subnet_name_wildcard   = "sap_vpc_*"
+vip_subnet_selection_mode  = "first"
+
 
 
 #default_availability_zone = "us-east-1a"
