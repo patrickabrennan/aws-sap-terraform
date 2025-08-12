@@ -1,160 +1,141 @@
 ########################################
-# Attach normalized_disks to the instance
+# EBS volumes + attachments (module)
 ########################################
 
+# Figure out the AZ to create volumes in:
+#  - Prefer the AZ from the selected subnet (data.aws_subnet.effective[0])
+#  - Fall back to the provided var.availability_zone if needed
 locals {
-  # Unique key per instance+disk so -b never collides with primary
-  disks_map = {
-    for d in local.normalized_disks :
+  ebs_instance_az_effective = try(data.aws_subnet.effective[0].availability_zone, var.availability_zone)
+
+  # Reasonable default sizes when not provided (GB)
+  default_size_for = {
+    data   = 512
+    log    = 256
+    backup = 1024
+    shared = 100
+    usrsap = 100
+    sapmnt = 100
+    tmp    = 50
+    swap   = 32
+    disk   = 50
+  }
+
+  #############################
+  # Default disk layouts
+  #############################
+  defaults_hana = [
+    # You can tweak sizes/types here or pass custom_ebs_config to override
+    { name = "data",   type = coalesce(var.hana_data_storage_type,   "gp3"), size = lookup(local.default_size_for, "data",   512) }
+    { name = "log",    type = coalesce(var.hana_logs_storage_type,   "gp3"), size = lookup(local.default_size_for, "log",    256) }
+    { name = "backup", type = coalesce(var.hana_backup_storage_type, "st1"), size = lookup(local.default_size_for, "backup", 1024) }
+    { name = "shared", type = coalesce(var.hana_shared_storage_type, "gp3"), size = lookup(local.default_size_for, "shared", 100) }
+  ]
+
+  defaults_nw = [
+    { name = "usrsap", type = "gp3", size = lookup(local.default_size_for, "usrsap", 100) }
+    { name = "sapmnt", type = "gp3", size = lookup(local.default_size_for, "sapmnt", 100) }
+    { name = "tmp",    type = "gp3", size = lookup(local.default_size_for, "tmp",     50) }
+    { name = "swap",   type = "gp3", size = lookup(local.default_size_for, "swap",    32) }
+  ]
+
+  # Choose source list: custom override > HANA > NW
+  source_disks = length(var.custom_ebs_config) > 0
+    ? var.custom_ebs_config
+    : (var.application_code == "hana" ? local.defaults_hana : local.defaults_nw)
+
+  # Support "disk_nb" to auto expand into multiple disks (0..disk_nb-1)
+  expanded_disks = flatten([
+    for item in local.source_disks : (
+      try(tonumber(lookup(item, "disk_nb", 1)), 1) > 1
+        ? [for i in range(try(tonumber(lookup(item, "disk_nb", 1)), 1)) : merge(item, { disk_index = i })]
+        : [merge(item, { disk_index = try(tonumber(lookup(item, "disk_index", 0)), 0) })]
+    )
+  ])
+
+  # Normalize fields and produce a **list** of disk objects
+  normalized_list = [
+    for idx, d in local.expanded_disks : {
+      name       = trim(lower(coalesce(lookup(d, "name", null), lookup(d, "identifier", null), "disk")))
+      disk_index = try(tonumber(lookup(d, "disk_index", idx)), idx)
+      size = (
+        try(tonumber(lookup(d, "size",        0)), 0) > 0 ? try(tonumber(lookup(d, "size",        0)), 0) :
+        try(tonumber(lookup(d, "disk_size",   0)), 0) > 0 ? try(tonumber(lookup(d, "disk_size",   0)), 0) :
+        try(tonumber(lookup(d, "volume_size", 0)), 0) > 0 ? try(tonumber(lookup(d, "volume_size", 0)), 0) :
+        try(tonumber(lookup(d, "size_gb",     0)), 0) > 0 ? try(tonumber(lookup(d, "size_gb",     0)), 0) :
+        lookup(local.default_size_for, lower(lookup(d, "identifier", lookup(d, "name", "disk"))), 50)
+      )
+      type       = coalesce(
+                    lookup(d, "type",        null),
+                    lookup(d, "disk_type",   null),
+                    lookup(d, "volume_type", null),
+                    lookup(d, "ebs_type",    null),
+                    "gp3"
+                  )
+      iops       = try(tonumber(lookup(d, "iops", 0)), 0)
+      throughput = try(tonumber(lookup(d, "throughput", 0)), 0)
+    }
+  ]
+
+  # Convert to **map** keyed by "<hostname>|<000>|<name>"
+  normalized_disks = {
+    for d in local.normalized_list :
     "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
   }
 
-  # Letters for /dev/xvd? fallback
-  device_letters = [
-    "f","g","h","i","j","k","l","m","n","o","p",
-    "q","r","s","t","u","v","w","x","y","z",
-    "aa","ab","ac","ad","ae","af"
-  ]
+  # Deterministic device names /dev/xvd[f..]
+  device_letters = ["f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
+  device_map     = {
+    for k, d in local.normalized_disks :
+    k => "/dev/xvd${local.device_letters[min(d.disk_index, length(local.device_letters)-1)]}"
+  }
 }
 
-# --- EBS volumes ---
+# -----------------------------
+# Create EBS volumes
+# -----------------------------
 resource "aws_ebs_volume" "all_volumes" {
-  # keep your existing for_each
   for_each = local.normalized_disks
 
-  # CRITICAL: use the instance's AZ derived from the selected subnet
-  availability_zone = local.instance_az_effective
+  # CRITICAL: use the instance/subnet AZ (not a hardcoded var)
+  availability_zone = local.ebs_instance_az_effective
 
   size       = each.value.size
   type       = each.value.type
-  iops       = try(each.value.iops, null)
-  throughput = try(each.value.throughput, null)
+  iops       = each.value.iops > 0       ? each.value.iops       : null
+  throughput = each.value.throughput > 0 ? each.value.throughput : null
 
-  # optional KMS
+  # Optional KMS encryption
   kms_key_id = var.kms_key_arn != "" ? var.kms_key_arn : null
-  encrypted  = var.kms_key_arn != "" ? true : null
+  encrypted  = var.kms_key_arn != "" ? true            : null
 
   tags = merge(
     var.ec2_tags,
-    { Name = "${var.hostname}|${format("%03d", each.value.disk_index)}|${each.value.name}" }
+    {
+      Name        = "${var.hostname}|${format("%03d", each.value.disk_index)}|${each.value.name}"
+      Environment = var.environment
+      Hostname    = var.hostname
+      Application = var.application_code
+    }
   )
 
   lifecycle {
     create_before_destroy = true
   }
 
-  # ensures the subnet (and its AZ) has been resolved first
+  # Ensure subnet is resolved first, so AZ is known
   depends_on = [data.aws_subnet.effective]
 }
 
-# --- Attachments ---
+# -----------------------------
+# Attach EBS volumes
+# -----------------------------
 resource "aws_volume_attachment" "all_attachments" {
   for_each = aws_ebs_volume.all_volumes
 
   instance_id = aws_instance.this.id
   volume_id   = each.value.id
+
+  # Stable device name per disk key
   device_name = lookup(local.device_map, each.key, "/dev/xvdf")
 }
-
-  volume_id   = aws_ebs_volume.all_volumes[each.key].id
-  instance_id = aws_instance.this.id
-
-  force_detach = true
-
-  depends_on = [
-    aws_instance.this,
-    aws_ebs_volume.all_volumes
-  ]
-
-  timeouts {
-    create = "15m"
-    delete = "15m"
-  }
-}
-
-
-
-
-
-
-
-/*
-########################################
-# modules/ec2/ebs.tf
-# Consumes local.normalized_disks and attaches safely.
-########################################
-# Requires:
-# - local.normalized_disks (from ebs_expansion.tf)
-# - data.aws_subnet.effective (provides availability_zone)
-# - data.aws_ssm_parameter.ebs_kms (optional; omit if you don't use it)
-
-locals {
-  # Unique key per instance+disk so -a/-b nodes never collide
-  disks_map = {
-    for d in local.normalized_disks :
-    "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
-  }
-
-  # Letters for /dev/xvd? fallback: f,g,h,... (Nitro maps to nvme on guest)
-  device_letters = [
-    "f","g","h","i","j","k","l","m","n","o","p",
-    "q","r","s","t","u","v","w","x","y","z",
-    "aa","ab","ac","ad","ae","af"
-  ]
-}
-
-resource "aws_ebs_volume" "all_volumes" {
-  for_each          = local.disks_map
-  availability_zone = data.aws_subnet.effective.availability_zone
-
-  size       = tonumber(each.value.size)
-  type       = lower(each.value.type)
-  encrypted  = true
-  kms_key_id = try(data.aws_ssm_parameter.ebs_kms.value, null)
-
-  # Set IOPS only when supported and > 0 (gp3, io1, io2)
-  iops = (
-    contains(["gp3","io1","io2"], each.value.type) && try(tonumber(each.value.iops), 0) > 0
-    ? tonumber(each.value.iops)
-    : null
-  )
-
-  # Set throughput only for gp3 and > 0
-  throughput = (
-    each.value.type == "gp3" && try(tonumber(each.value.throughput), 0) > 0
-    ? tonumber(each.value.throughput)
-    : null
-  )
-
-  tags = merge(var.ec2_tags, {
-    Name        = "${var.hostname}-${each.value.name}-${format("%03d", each.value.disk_index)}"
-    environment = var.environment
-    role        = "data"
-  })
-}
-
-resource "aws_volume_attachment" "all_attachments" {
-  for_each = local.disks_map
-
-  # Use provided device name if set; otherwise pick a sequential fallback
-  device_name = coalesce(
-    try(each.value.device, null),
-    "/dev/xvd${local.device_letters[(try(each.value.disk_index, 0)) % length(local.device_letters)]}"
-  )
-
-  volume_id   = aws_ebs_volume.all_volumes[each.key].id
-  instance_id = aws_instance.this.id
-
-  force_detach = true
-
-  depends_on = [
-    aws_instance.this,
-    aws_ebs_volume.all_volumes
-  ]
-
-  timeouts {
-    create = "15m"
-    delete = "15m"
-  }
-}
-*/
