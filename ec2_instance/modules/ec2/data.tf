@@ -2,7 +2,6 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
-# If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -16,7 +15,6 @@ data "aws_subnets" "by_filters" {
     values = [var.availability_zone]
   }
 
-  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -25,7 +23,6 @@ data "aws_subnets" "by_filters" {
     }
   }
 
-  # Optional Name filter (supports wildcards if Name tags are consistent)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -36,16 +33,10 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  # All candidates from filters (or empty)
   _candidates_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
+  subnet_id_candidates     = var.subnet_ID != "" ? [var.subnet_ID] : local._candidates_from_filters
 
-  # If caller provided subnet_ID, that wins; otherwise use the filtered list
-  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : local._candidates_from_filters
-
-  # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
-  need_unique = lower(var.subnet_selection_mode) != "first"
-
-  # Deterministically pick the first if many
+  need_unique  = lower(var.subnet_selection_mode) != "first"
   _picked_first = length(local.subnet_id_candidates) > 0 ? sort(local.subnet_id_candidates)[0] : ""
 
   subnet_id_effective = (
@@ -55,10 +46,8 @@ locals {
       : local._picked_first
   )
 
-  # --- Precondition wiring moved into locals so HCL parses cleanly ---
-  subnet_condition = local.need_unique
-    ? (local.subnet_id_effective != "")
-    : (length(local.subnet_id_candidates) > 0)
+  # Inline conditional (single line) to keep HCL happy
+  subnet_condition      = local.need_unique ? (local.subnet_id_effective != "") : (length(local.subnet_id_candidates) > 0)
 
   subnet_error_unique = <<-EOT
     Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
@@ -79,7 +68,6 @@ locals {
   subnet_error_message = local.need_unique ? local.subnet_error_unique : local.subnet_error_none
 }
 
-# Enforce the selection rule
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -89,7 +77,6 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
-# Finally, expose the chosen subnet (resolved strictly by ID)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
@@ -122,21 +109,13 @@ locals {
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (
-          var.ha
-          ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
-          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
-        )
+      : (var.ha ? data.aws_ssm_parameter.ec2_ha_instance_profile.value : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value)
   )
 
   resolved_security_group_ids = (
     length(var.security_group_ids) > 0
       ? var.security_group_ids
-      : (
-          var.application_code == "hana"
-            ? [data.aws_ssm_parameter.ec2_hana_sg.value]
-            : [data.aws_ssm_parameter.ec2_nw_sg.value]
-        )
+      : (var.application_code == "hana" ? [data.aws_ssm_parameter.ec2_hana_sg.value] : [data.aws_ssm_parameter.ec2_nw_sg.value])
   )
 }
 
