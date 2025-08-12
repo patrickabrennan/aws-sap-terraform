@@ -126,3 +126,17 @@ variable "vpc_tag_value" {
   type        = string
   default     = ""
 }
+
+# Root variables.tf (add these)
+
+variable "kms_key_arn" {
+  description = "KMS key ARN to encrypt EBS and the root volume. Leave empty to use default volume encryption."
+  type        = string
+  default     = ""
+}
+
+variable "ebs_kms_ssm_path" {
+  description = "Optional SSM Parameter path that contains the KMS key ARN (e.g., /env/kms/ebs/arn). Leave empty to skip."
+  type        = string
+  default     = ""
+}
