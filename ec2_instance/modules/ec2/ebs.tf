@@ -36,10 +36,13 @@ locals {
     { name = "swap",   type = "gp3", size = lookup(local.default_size_for, "swap",    64) },
   ]
 
+  # Treat null as empty list so length() never errors
+  custom_ebs_config_safe = try(var.custom_ebs_config, [])
+
   # Caller-provided custom layout wins; else choose by application_code
   base_disks = (
-    length(var.custom_ebs_config) > 0
-      ? var.custom_ebs_config
+    length(local.custom_ebs_config_safe) > 0
+      ? local.custom_ebs_config_safe
       : (var.application_code == "hana" ? local.defaults_hana : local.defaults_nw)
   )
 
@@ -59,14 +62,12 @@ locals {
   # Generate deterministic device names if not provided: /dev/xvdf, /dev/xvdg, ...
   device_letters = ["f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
 
-  # Base mapping by (index) => letter; allow per-disk override via "device"
   _device_by_index = {
     for d in local.normalized_disks :
     d.disk_index => (d.device != "" ? d.device : "/dev/xvd${local.device_letters[d.disk_index]}")
   }
 
-  # Final map: key each disk so we can for_each reliably
-  # key format: "<hostname>|<index3>|<name>"
+  # Key each disk so we can for_each reliably
   disks_by_key = {
     for d in local.normalized_disks :
     "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => merge(d, {
@@ -83,7 +84,7 @@ resource "aws_ebs_volume" "all_volumes" {
   size              = each.value.size
   type              = each.value.type
 
-  # Only set iops/throughput when > 0 (otherwise leave null so provider defaults apply)
+  # Only set iops/throughput when > 0
   iops       = each.value.iops > 0 ? each.value.iops : null
   throughput = (each.value.type == "gp3" && each.value.throughput > 0) ? each.value.throughput : null
 
@@ -110,10 +111,8 @@ resource "aws_volume_attachment" "all_attachments" {
   volume_id   = each.value.id
   instance_id = aws_instance.this.id
 
-  # Helpful when toggling HA or replacing instances
   skip_destroy = false
   force_detach = true
 
-  # Make sure instance exists first
   depends_on = [aws_instance.this]
 }
