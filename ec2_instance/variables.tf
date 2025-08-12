@@ -104,3 +104,10 @@ variable "vip_subnet_selection_mode" {
     error_message = "vip_subnet_selection_mode must be 'unique' or 'first'."
   }
 }
+
+#add this to ID VPC
+variable "vpc_name" {
+  description = "Match VPC by Name tag exactly (optional alternative)."
+  type        = string
+  default     = "sap_vpc"
+}
