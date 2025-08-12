@@ -45,7 +45,7 @@ locals {
   # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
   need_unique = lower(var.subnet_selection_mode) != "first"
 
-  # deterministically pick the first if many
+  # Deterministically pick the first if many
   _picked_first = length(local.subnet_id_candidates) > 0 ? sort(local.subnet_id_candidates)[0] : ""
 
   subnet_id_effective = (
@@ -54,33 +54,37 @@ locals {
       ? (length(local.subnet_id_candidates) == 1 ? local.subnet_id_candidates[0] : "")
       : local._picked_first
   )
+
+  # --- Precondition wiring moved into locals so HCL parses cleanly ---
+  subnet_condition = local.need_unique
+    ? (local.subnet_id_effective != "")
+    : (length(local.subnet_id_candidates) > 0)
+
+  subnet_error_unique = <<-EOT
+    Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
+    Refine selection by setting one of:
+      - subnet_tag_key + subnet_tag_value       (e.g., Tier=app)
+      - subnet_name_wildcard                    (e.g., "*public*" or "*private*")
+    Or allow auto-pick by setting:
+      - subnet_selection_mode = "first"
+  EOT
+
+  subnet_error_none = <<-EOT
+    No subnets matched in ${var.vpc_id} / ${var.availability_zone}.
+    Provide subnet_ID or narrow with:
+      - subnet_tag_key + subnet_tag_value
+      - subnet_name_wildcard (e.g., "*public*" or "*private*")
+  EOT
+
+  subnet_error_message = local.need_unique ? local.subnet_error_unique : local.subnet_error_none
 }
 
-# Enforce the selection rule only when uniqueness is required;
-# when selection_mode="first", just require that we found at least one.
+# Enforce the selection rule
 resource "null_resource" "assert_single_subnet" {
-  count = 1
-
   lifecycle {
     precondition {
-      condition = local.need_unique
-        ? (local.subnet_id_effective != "")
-        : (length(local.subnet_id_candidates) > 0)
-
-      error_message = local.need_unique ? <<-EOT
-        Subnet lookup did not resolve to a single subnet in ${var.vpc_id} / ${var.availability_zone}.
-        Refine selection by setting one of:
-          - subnet_tag_key + subnet_tag_value       (e.g., Tier=app)
-          - subnet_name_wildcard                    (e.g., "*public*" or "*private*")
-        Or allow auto-pick by setting:
-          - subnet_selection_mode = "first"
-      EOT
-      : <<-EOT
-        No subnets matched in ${var.vpc_id} / ${var.availability_zone}.
-        Provide subnet_ID or narrow with:
-          - subnet_tag_key + subnet_tag_value
-          - subnet_name_wildcard (e.g., "*public*" or "*private*")
-      EOT
+      condition     = local.subnet_condition
+      error_message = local.subnet_error_message
     }
   }
 }
