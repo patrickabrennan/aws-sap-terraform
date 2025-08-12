@@ -3,9 +3,6 @@
 ############################################
 
 # If subnet_ID is NOT given, search by VPC + AZ (+ optional tag filters)
-# We fetch TWO lists:
-#   - by_filters: VPC+AZ plus optional narrowing
-#   - az_only:   VPC+AZ only (fallback if filters give 0 results)
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
 
@@ -54,13 +51,13 @@ data "aws_subnets" "az_only" {
 }
 
 locals {
-  # Prefer filtered list if not empty; else fall back to AZ-only
+  # Prefer filtered list; if empty, also consider AZ-only. Use concat to avoid coalescelist errors.
   _candidates_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
   _candidates_from_azonly  = try(data.aws_subnets.az_only[0].ids, [])
-  _candidates_union        = coalescelist(local._candidates_from_filters, local._candidates_from_azonly)
+  _candidates_union        = distinct(sort(concat(local._candidates_from_filters, local._candidates_from_azonly)))
 
-  # Candidate IDs: explicit subnet_ID wins; otherwise the union (sorted for determinism)
-  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : distinct(sort(local._candidates_union))
+  # Candidate IDs: explicit subnet_ID wins; otherwise the union
+  subnet_id_candidates = var.subnet_ID != "" ? [var.subnet_ID] : local._candidates_union
 
   # Selection policy: "unique" (must be exactly one) or "first" (take first if many)
   need_unique = var.subnet_selection_mode != "first"
@@ -99,15 +96,11 @@ data "aws_subnet" "effective" {
 # SG IDs read from SSM for ENIs / VIP ENI  #
 #############################################
 
-# HANA node SG id (db1)
 data "aws_ssm_parameter" "ec2_hana_sg" {
-  # Expects something like: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
-# NetWeaver/app node SG id (app1)
 data "aws_ssm_parameter" "ec2_nw_sg" {
-  # Expects something like: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
@@ -115,31 +108,23 @@ data "aws_ssm_parameter" "ec2_nw_sg" {
 # Resolve IAM Instance Profile name via SSM
 ###########################################
 
-# HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2-ha/name
 data "aws_ssm_parameter" "ec2_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2-ha/name"
 }
 
-# Non-HA profile name, e.g. /<env>/iam/role/instance-profile/iam-role-sap-ec2/name
 data "aws_ssm_parameter" "ec2_non_ha_instance_profile" {
   name = "/${var.environment}/iam/role/instance-profile/iam-role-sap-ec2/name"
 }
 
 locals {
-  # Effective IAM instance profile name (override > HA/non-HA from SSM)
   iam_instance_profile_name_effective = (
     var.iam_instance_profile_name_override != ""
       ? var.iam_instance_profile_name_override
-      : (
-          var.ha
+      : (var.ha
           ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
-          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
-        )
+          : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value)
   )
 
-  # Effective security group IDs for the primary ENI:
-  # - if caller passes var.security_group_ids, use them
-  # - otherwise choose from SSM based on application_code
   resolved_security_group_ids = (
     length(var.security_group_ids) > 0
       ? var.security_group_ids
