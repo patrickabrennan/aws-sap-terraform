@@ -2,13 +2,11 @@
 # EBS volumes + attachments (module)
 ########################################
 
-# Figure out the AZ to create volumes in:
-#  - Prefer the AZ from the selected subnet (data.aws_subnet.effective[0])
-#  - Fall back to the provided var.availability_zone if needed
+# Use the AZ from the selected subnet; fall back to var.availability_zone
 locals {
   ebs_instance_az_effective = try(data.aws_subnet.effective[0].availability_zone, var.availability_zone)
 
-  # Reasonable default sizes when not provided (GB)
+  # Reasonable default sizes (GB)
   default_size_for = {
     data   = 512
     log    = 256
@@ -26,25 +24,25 @@ locals {
   #############################
   defaults_hana = [
     # You can tweak sizes/types here or pass custom_ebs_config to override
-    { name = "data",   type = coalesce(var.hana_data_storage_type,   "gp3"), size = lookup(local.default_size_for, "data",   512) }
-    { name = "log",    type = coalesce(var.hana_logs_storage_type,   "gp3"), size = lookup(local.default_size_for, "log",    256) }
-    { name = "backup", type = coalesce(var.hana_backup_storage_type, "st1"), size = lookup(local.default_size_for, "backup", 1024) }
+    { name = "data",   type = coalesce(var.hana_data_storage_type,   "gp3"), size = lookup(local.default_size_for, "data",   512) },
+    { name = "log",    type = coalesce(var.hana_logs_storage_type,   "gp3"), size = lookup(local.default_size_for, "log",    256) },
+    { name = "backup", type = coalesce(var.hana_backup_storage_type, "st1"), size = lookup(local.default_size_for, "backup", 1024) },
     { name = "shared", type = coalesce(var.hana_shared_storage_type, "gp3"), size = lookup(local.default_size_for, "shared", 100) }
   ]
 
   defaults_nw = [
-    { name = "usrsap", type = "gp3", size = lookup(local.default_size_for, "usrsap", 100) }
-    { name = "sapmnt", type = "gp3", size = lookup(local.default_size_for, "sapmnt", 100) }
-    { name = "tmp",    type = "gp3", size = lookup(local.default_size_for, "tmp",     50) }
+    { name = "usrsap", type = "gp3", size = lookup(local.default_size_for, "usrsap", 100) },
+    { name = "sapmnt", type = "gp3", size = lookup(local.default_size_for, "sapmnt", 100) },
+    { name = "tmp",    type = "gp3", size = lookup(local.default_size_for, "tmp",     50) },
     { name = "swap",   type = "gp3", size = lookup(local.default_size_for, "swap",    32) }
   ]
 
-  # Choose source list: custom override > HANA > NW
+  # Source list: custom override > HANA > NW
   source_disks = length(var.custom_ebs_config) > 0
     ? var.custom_ebs_config
     : (var.application_code == "hana" ? local.defaults_hana : local.defaults_nw)
 
-  # Support "disk_nb" to auto expand into multiple disks (0..disk_nb-1)
+  # Expand "disk_nb" into multiple entries; default disk_index is sequential
   expanded_disks = flatten([
     for item in local.source_disks : (
       try(tonumber(lookup(item, "disk_nb", 1)), 1) > 1
@@ -53,7 +51,7 @@ locals {
     )
   ])
 
-  # Normalize fields and produce a **list** of disk objects
+  # Normalize into a list
   normalized_list = [
     for idx, d in local.expanded_disks : {
       name       = trim(lower(coalesce(lookup(d, "name", null), lookup(d, "identifier", null), "disk")))
@@ -77,13 +75,13 @@ locals {
     }
   ]
 
-  # Convert to **map** keyed by "<hostname>|<000>|<name>"
+  # Convert to a map keyed by "<hostname>|<000>|<name>" — guarantees uniqueness
   normalized_disks = {
     for d in local.normalized_list :
     "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
   }
 
-  # Deterministic device names /dev/xvd[f..]
+  # Stable device names: /dev/xvd[f..z]
   device_letters = ["f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
   device_map     = {
     for k, d in local.normalized_disks :
@@ -97,13 +95,24 @@ locals {
 resource "aws_ebs_volume" "all_volumes" {
   for_each = local.normalized_disks
 
-  # CRITICAL: use the instance/subnet AZ (not a hardcoded var)
+  # CRITICAL: Create volumes in the instance/subnet AZ
   availability_zone = local.ebs_instance_az_effective
 
-  size       = each.value.size
-  type       = each.value.type
-  iops       = each.value.iops > 0       ? each.value.iops       : null
-  throughput = each.value.throughput > 0 ? each.value.throughput : null
+  size = each.value.size
+  type = each.value.type
+
+  # Set IOPS/Throughput only when valid for the chosen type
+  iops = (
+    each.value.iops > 0 && contains(["io1", "io2", "gp3"], each.value.type)
+      ? each.value.iops
+      : null
+  )
+
+  throughput = (
+    each.value.type == "gp3" && each.value.throughput > 0
+      ? each.value.throughput
+      : null
+  )
 
   # Optional KMS encryption
   kms_key_id = var.kms_key_arn != "" ? var.kms_key_arn : null
@@ -123,8 +132,8 @@ resource "aws_ebs_volume" "all_volumes" {
     create_before_destroy = true
   }
 
-  # Ensure subnet is resolved first, so AZ is known
-  depends_on = [data.aws_subnet.effective]
+  # Make sure the subnet/ AZ selection happened first
+  depends_on = [null_resource.assert_single_subnet]
 }
 
 # -----------------------------
@@ -135,7 +144,5 @@ resource "aws_volume_attachment" "all_attachments" {
 
   instance_id = aws_instance.this.id
   volume_id   = each.value.id
-
-  # Stable device name per disk key
   device_name = lookup(local.device_map, each.key, "/dev/xvdf")
 }
