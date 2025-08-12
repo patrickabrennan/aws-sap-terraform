@@ -4,14 +4,13 @@
 # - Derive the instance AZ from the chosen subnet
 ############################################
 
-# All subnets in the VPC, optionally narrowed by tag or Name
 data "aws_subnets" "by_filters" {
-  # We always allow tag/wildcard narrowing; caller can pass none.
   filter {
     name   = "vpc-id"
     values = [var.vpc_id]
   }
 
+  # Optional exact tag (e.g., Tier=app or sap_relevant=true)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -20,6 +19,7 @@ data "aws_subnets" "by_filters" {
     }
   }
 
+  # Optional Name wildcard (e.g., sap_vpc_* or *private*)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -31,13 +31,22 @@ data "aws_subnets" "by_filters" {
 
 locals {
   # Build candidate pool: explicit ID (if given) + any from filters
-  _input_subnet_id           = var.subnet_ID
-  _from_filters              = try(data.aws_subnets.by_filters.ids, [])  # ids is empty if no matches
-  _candidates_raw            = concat((_input_subnet_id != "" ? [ _input_subnet_id ] : []), _from_filters)
-  subnet_id_candidates       = [for id in local._candidates_raw : id if id != null && trim(id, " ") != ""]
+  _input_subnet_id = var.subnet_ID
+  _from_filters    = try(data.aws_subnets.by_filters.ids, [])
 
-  need_unique                = var.subnet_selection_mode != "first"
-  subnet_id_effective        = (
+  _candidates_raw = concat(
+    (local._input_subnet_id != "" ? [local._input_subnet_id] : []),
+    local._from_filters
+  )
+
+  subnet_id_candidates = [
+    for id in local._candidates_raw : id
+    if id != null && trim(id, " ") != ""
+  ]
+
+  need_unique = var.subnet_selection_mode != "first"
+
+  subnet_id_effective = (
     length(local.subnet_id_candidates) == 0 ? "" :
     local.need_unique
       ? (length(local.subnet_id_candidates) == 1 ? local.subnet_id_candidates[0] : "")
@@ -45,7 +54,6 @@ locals {
   )
 }
 
-# Enforce: must have exactly one (if unique) or at least one (if first)
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -53,8 +61,8 @@ resource "null_resource" "assert_single_subnet" {
       error_message = <<-EOT
         Subnet lookup did not resolve to a single subnet in ${var.vpc_id}.
         Provide subnet_ID or narrow with:
-          - subnet_tag_key + subnet_tag_value (e.g., Tier=app)
-          - subnet_name_wildcard (e.g., "*public*" or "*private*")
+          - subnet_tag_key + subnet_tag_value (e.g., Tier=app or sap_relevant=true)
+          - subnet_name_wildcard (e.g., "*public*" or "sap_vpc_*")
         Or auto-pick by setting:
           - subnet_selection_mode = "first"
       EOT
@@ -62,13 +70,13 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
-# Chosen primary subnet (gives us the AZ too)
+# Chosen primary subnet (use its AZ)
 data "aws_subnet" "effective" {
   id = local.subnet_id_effective
 }
 
 locals {
-  # Instance AZ is derived from the selected subnet (no input AZ needed)
+  # Derived from the selected subnet
   instance_az_effective = try(data.aws_subnet.effective.availability_zone, "")
   primary_subnet_id     = local.subnet_id_effective
 }
@@ -77,15 +85,11 @@ locals {
 # SG IDs read from SSM for ENIs / VIP ENI
 #############################################
 
-# HANA node SG id (db1)
 data "aws_ssm_parameter" "ec2_hana_sg" {
-  # Expects something like: /<env>/security_group/db1/id
   name = "/${var.environment}/security_group/db1/id"
 }
 
-# NetWeaver/app node SG id (app1)
 data "aws_ssm_parameter" "ec2_nw_sg" {
-  # Expects something like: /<env>/security_group/app1/id
   name = "/${var.environment}/security_group/app1/id"
 }
 
