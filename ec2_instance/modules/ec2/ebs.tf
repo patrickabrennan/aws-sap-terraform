@@ -37,7 +37,7 @@ locals {
   ]
 
   # Treat null as empty list so length() never errors
-  custom_ebs_config_safe = try(var.custom_ebs_config, [])
+  custom_ebs_config_safe = coalesce(var.custom_ebs_config, [])
 
   # Caller-provided custom layout wins; else choose by application_code
   base_disks = (
@@ -46,12 +46,12 @@ locals {
       : (var.application_code == "hana" ? local.defaults_hana : local.defaults_nw)
   )
 
-  # Normalize inputs to a consistent shape
+  # Normalize inputs to a consistent shape (robust to null/strings)
   normalized_disks = [
     for idx, d in tolist(local.base_disks) : {
       name       = coalesce(try(tostring(lookup(d, "name", null)), null), "disk${idx}")
       type       = lower(lookup(d, "type", "gp3"))
-      size       = tonumber(lookup(d, "size", 50))
+      size       = try(tonumber(lookup(d, "size", null)), 50)
       iops       = try(tonumber(lookup(d, "iops", 0)), 0)
       throughput = try(tonumber(lookup(d, "throughput", 0)), 0)
       device     = lookup(d, "device", "")
@@ -59,7 +59,7 @@ locals {
     }
   ]
 
-  # Generate deterministic device names if not provided: /dev/xvdf, /dev/xvdg, ...
+  # Deterministic device names if not provided: /dev/xvdf, /dev/xvdg, ...
   device_letters = ["f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
 
   _device_by_index = {
@@ -84,7 +84,7 @@ resource "aws_ebs_volume" "all_volumes" {
   size              = each.value.size
   type              = each.value.type
 
-  # Only set iops/throughput when > 0
+  # Only set iops/throughput when > 0 (and throughput only on gp3)
   iops       = each.value.iops > 0 ? each.value.iops : null
   throughput = (each.value.type == "gp3" && each.value.throughput > 0) ? each.value.throughput : null
 
