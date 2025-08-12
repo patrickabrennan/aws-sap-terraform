@@ -2,6 +2,7 @@
 # VIP subnet resolution (per-instance AZ)
 ############################################
 
+# Only look up VIP subnets when the feature is enabled and no explicit ID is given
 data "aws_subnets" "vip" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
@@ -15,6 +16,7 @@ data "aws_subnets" "vip" {
     values = [var.availability_zone]
   }
 
+  # Optional exact tag
   dynamic "filter" {
     for_each = (var.vip_subnet_tag_key != "" && var.vip_subnet_tag_value != "") ? [1] : []
     content {
@@ -23,6 +25,7 @@ data "aws_subnets" "vip" {
     }
   }
 
+  # Optional Name filter
   dynamic "filter" {
     for_each = (var.vip_subnet_name_wildcard != "") ? [1] : []
     content {
@@ -34,9 +37,20 @@ data "aws_subnets" "vip" {
 
 locals {
   _vip_candidates_from_filters = try(data.aws_subnets.vip[0].ids, [])
-  vip_candidate_ids            = var.vip_subnet_id != "" ? [var.vip_subnet_id] : (var.enable_vip_eni ? local._vip_candidates_from_filters : [])
 
-  vip_need_unique  = lower(var.vip_subnet_selection_mode) != "first"
+  # Normalize input (turn null into "")
+  _vip_id_input = try(coalesce(var.vip_subnet_id, ""), "")
+
+  # Build raw candidate list (only when feature enabled)
+  _vip_candidate_ids_raw = (
+    _vip_id_input != "" ? [_vip_id_input] :
+    (var.enable_vip_eni ? _vip_candidates_from_filters : [])
+  )
+
+  # Remove nulls and empty strings
+  vip_candidate_ids = [for id in local._vip_candidate_ids_raw : id if id != null && trim(id) != ""]
+
+  vip_need_unique   = lower(var.vip_subnet_selection_mode) != "first"
   _vip_picked_first = length(local.vip_candidate_ids) > 0 ? sort(local.vip_candidate_ids)[0] : ""
 
   vip_subnet_id_effective = (
@@ -46,8 +60,7 @@ locals {
       : local._vip_picked_first
   )
 
-  # Inline conditional (single line)
-  vip_condition      = local.vip_need_unique ? (local.vip_subnet_id_effective != "") : (length(local.vip_candidate_ids) > 0)
+  vip_condition = local.vip_need_unique ? (local.vip_subnet_id_effective != "") : (length(local.vip_candidate_ids) > 0)
 
   vip_error_unique = <<-EOT
     VIP ENI cannot be created: no single subnet found in ${var.vpc_id} / ${var.availability_zone}.
@@ -68,6 +81,7 @@ locals {
   vip_error_message = local.vip_need_unique ? local.vip_error_unique : local.vip_error_none
 }
 
+# Enforce rule only when VIP ENI is enabled
 resource "null_resource" "assert_vip_subnet" {
   count = var.enable_vip_eni ? 1 : 0
 
@@ -79,6 +93,7 @@ resource "null_resource" "assert_vip_subnet" {
   }
 }
 
+# Create the VIP ENI (if enabled)
 resource "aws_network_interface" "ha_vip" {
   count = var.enable_vip_eni ? 1 : 0
 
@@ -86,13 +101,8 @@ resource "aws_network_interface" "ha_vip" {
   description       = "${var.hostname}-vip"
   source_dest_check = var.application_code == "hana" ? false : true
 
-  security_groups = (
-    length(var.security_group_ids) > 0
-      ? var.security_group_ids
-      : (var.application_code == "hana" ? [data.aws_ssm_parameter.ec2_hana_sg.value] : [data.aws_ssm_parameter.ec2_nw_sg.value])
-  )
-
-  depends_on = [null_resource.assert_sg_nonempty]
+  # Reuse the same SGs as instance (resolved in data.tf locals)
+  security_groups = local.resolved_security_group_ids
 
   tags = merge(
     var.ec2_tags,
@@ -103,4 +113,10 @@ resource "aws_network_interface" "ha_vip" {
       Hostname    = var.hostname
     }
   )
+
+  depends_on = [
+    null_resource.assert_vip_subnet,
+    null_resource.assert_single_subnet,
+    null_resource.assert_sg_nonempty
+  ]
 }
