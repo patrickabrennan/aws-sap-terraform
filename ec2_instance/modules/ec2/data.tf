@@ -2,17 +2,36 @@
 # Subnet resolution (no hardcoding needed)
 ############################################
 
+# If subnet_ID is NOT given, search by VPC + AZ
 data "aws_subnets" "az_only" {
   count = var.subnet_ID == "" ? 1 : 0
-  filter { name = "vpc-id"            values = [var.vpc_id] }
-  filter { name = "availability-zone" values = [var.availability_zone] }
+
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
 }
 
+# Same, but allow extra narrowing by tag or Name wildcard
 data "aws_subnets" "by_filters" {
   count = var.subnet_ID == "" ? 1 : 0
-  filter { name = "vpc-id"            values = [var.vpc_id] }
-  filter { name = "availability-zone" values = [var.availability_zone] }
 
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  filter {
+    name   = "availability-zone"
+    values = [var.availability_zone]
+  }
+
+  # Optional exact tag match (e.g., Tier = app)
   dynamic "filter" {
     for_each = (var.subnet_tag_key != "" && var.subnet_tag_value != "") ? [1] : []
     content {
@@ -21,6 +40,7 @@ data "aws_subnets" "by_filters" {
     }
   }
 
+  # Optional Name filter (supports wildcards if Name tags are consistent)
   dynamic "filter" {
     for_each = (var.subnet_name_wildcard != "") ? [1] : []
     content {
@@ -31,21 +51,25 @@ data "aws_subnets" "by_filters" {
 }
 
 locals {
-  _subnet_id_input        = trimspace(coalesce(var.subnet_ID, ""))
+  # Inputs & candidates
+  _subnet_id_input         = trimspace(coalesce(var.subnet_ID, ""))
   _candidates_from_filters = var.subnet_ID == "" ? try(data.aws_subnets.by_filters[0].ids, []) : []
   _candidates_from_azonly  = var.subnet_ID == "" ? try(data.aws_subnets.az_only[0].ids,   []) : []
 
+  # Build raw list, prefer explicit subnet_ID, else filtered list, else AZ-only list
   _subnet_id_candidates_raw = (
     local._subnet_id_input != "" ? [local._subnet_id_input] :
     length(local._candidates_from_filters) > 0 ? local._candidates_from_filters :
     local._candidates_from_azonly
   )
 
+  # Normalize list
   subnet_id_candidates = distinct(sort([
     for id in local._subnet_id_candidates_raw : id
     if id != null && trimspace(id) != ""
   ]))
 
+  # Selection policy: "unique" => must be exactly one; "first" => take first if many
   need_unique      = var.subnet_selection_mode != "first"
   has_any          = length(local.subnet_id_candidates) >= 1
   is_exactly_one   = length(local.subnet_id_candidates) == 1
@@ -58,6 +82,7 @@ locals {
   )
 }
 
+# Enforce the selection rule with a human-friendly message
 resource "null_resource" "assert_single_subnet" {
   lifecycle {
     precondition {
@@ -74,6 +99,7 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
+# Finally, expose the chosen subnet (used by other resources)
 data "aws_subnet" "effective" {
   id         = local.subnet_id_effective
   depends_on = [null_resource.assert_single_subnet]
@@ -83,10 +109,12 @@ data "aws_subnet" "effective" {
 # SG IDs read from SSM for ENIs / VIP ENI  #
 #############################################
 
+# HANA node SG id (db1)
 data "aws_ssm_parameter" "ec2_hana_sg" {
   name = "/${var.environment}/security_group/db1/id"
 }
 
+# NetWeaver/app node SG id (app1)
 data "aws_ssm_parameter" "ec2_nw_sg" {
   name = "/${var.environment}/security_group/app1/id"
 }
