@@ -1,5 +1,6 @@
 ########################################
-# EC2 instance using the ENI + inline EBS
+# modules/ec2/ec2.tf
+# EC2 instance using the ENI + inline EBS, with per-volume tags
 ########################################
 
 locals {
@@ -72,9 +73,17 @@ locals {
     })
   }
 
-  # Use a deterministic order for both defining blocks and later tagging
-  inline_disk_map_sorted   = { for k in sort(keys(local.inline_disks_by_key)) : k => local.inline_disks_by_key[k] }
-  inline_disk_names_by_idx = { for idx, k in sort(keys(local.inline_disks_by_key)) : idx => local.inline_disks_by_key[k].name }
+  # Deterministic order for defining blocks
+  inline_disk_map_sorted = {
+    for k in sort(keys(local.inline_disks_by_key)) :
+    k => local.inline_disks_by_key[k]
+  }
+
+  # Map device_name -> friendly disk name (for per-volume Name tags)
+  device_to_disk_name = {
+    for k, v in local.inline_disks_by_key :
+    v.device => v.name
+  }
 }
 
 resource "aws_instance" "this" {
@@ -152,7 +161,8 @@ resource "aws_instance" "this" {
   ]
 }
 
-# ---- Per-volume Name tags (unique per disk) ----
+# ---- Per-volume Name tags ----
+
 # Tag ROOT as "<hostname>-root"
 resource "aws_ec2_tag" "root_name" {
   resource_id = aws_instance.this.root_block_device[0].volume_id
@@ -161,17 +171,19 @@ resource "aws_ec2_tag" "root_name" {
   depends_on  = [aws_instance.this]
 }
 
-# Tag DATA volumes as "<hostname>-<diskname>" in deterministic order
+# Tag DATA volumes as "<hostname>-<diskname>" by iterating the set as a map keyed by device_name
 resource "aws_ec2_tag" "data_names" {
-  for_each   = local.inline_disk_names_by_idx
-  resource_id = aws_instance.this.ebs_block_device[each.key].volume_id
+  for_each = {
+    for bd in aws_instance.this.ebs_block_device :
+    bd.device_name => bd
+  }
+
+  resource_id = each.value.volume_id
   key         = "Name"
-  value       = "${var.hostname}-${each.value}"
+  value       = "${var.hostname}-${lookup(local.device_to_disk_name, each.key, each.key)}"
+
   depends_on  = [aws_instance.this]
 }
-
-
-
 
 
 
