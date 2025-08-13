@@ -1,5 +1,117 @@
 ########################################
 # modules/ec2/ec2.tf
+# EC2 instance using the ENI from eni.tf
+########################################
+
+resource "aws_instance" "this" {
+  ami           = var.ami_ID
+  instance_type = var.instance_type
+  key_name      = var.key_name
+  monitoring    = var.monitoring
+
+  # Attach the ENI created in eni.tf
+  network_interface {
+    device_index         = 0
+    network_interface_id = aws_network_interface.this.id
+  }
+
+  # IAM instance profile (string name from SSM in data.tf)
+  iam_instance_profile = (
+    var.ha
+    ? data.aws_ssm_parameter.ec2_ha_instance_profile.value
+    : data.aws_ssm_parameter.ec2_non_ha_instance_profile.value
+  )
+
+  # Tag and encrypt the ROOT volume at create time (no separate tag resource)
+  root_block_device {
+    volume_size           = tonumber(var.root_ebs_size)
+    volume_type           = "gp3"
+    delete_on_termination = true
+    encrypted             = local.kms_key_arn_effective != "" ? true : null
+    kms_key_id            = local.kms_key_arn_effective != "" ? local.kms_key_arn_effective : null
+
+    # Requires AWS provider v5.x+
+    tags = merge(var.ec2_tags, {
+      Name        = "${var.hostname}-root"
+      Environment = var.environment
+      Application = var.application_code
+      Hostname    = var.hostname
+      Role        = "root"
+    })
+  }
+
+  # Inline data volumes — created, tagged, and set to delete on termination
+  # Assumes local.inline_disks is a deterministic list like:
+  #   [{ name, device, type, size, iops, throughput }, ...]
+  dynamic "ebs_block_device" {
+    for_each = local.inline_disks
+    content {
+      device_name          = ebs_block_device.value.device       # e.g. /dev/xvdf
+      volume_type          = ebs_block_device.value.type         # gp3, io2, etc
+      volume_size          = ebs_block_device.value.size
+      iops                 = ebs_block_device.value.iops > 0 ? ebs_block_device.value.iops : null
+      throughput           = (
+        lower(ebs_block_device.value.type) == "gp3" && ebs_block_device.value.throughput > 0
+      ) ? ebs_block_device.value.throughput : null
+
+      delete_on_termination = true
+      encrypted             = local.kms_key_arn_effective != "" ? true : null
+      kms_key_id            = local.kms_key_arn_effective != "" ? local.kms_key_arn_effective : null
+
+      # Name the volume at creation time (no race, no extra resources)
+      # Requires AWS provider v5.x+
+      tags = merge(var.ec2_tags, {
+        Name        = "${var.hostname}-${ebs_block_device.value.name}"
+        Environment = var.environment
+        Application = var.application_code
+        Hostname    = var.hostname
+        Role        = "ebs"
+      })
+    }
+  }
+
+  tags = merge(var.ec2_tags, {
+    Name         = var.hostname
+    environment  = var.environment
+    domain       = var.domain
+    app_code     = var.application_code
+    app_sid      = var.application_SID
+    ha           = tostring(var.ha)
+  })
+
+  # This helps keep the primary stable when the secondary is added/removed.
+  # (The real guard is at the ROOT for_each keys being stable.)
+  lifecycle {
+    create_before_destroy = false
+    ignore_changes = [
+      iam_instance_profile,
+      # inline disks are safe to ignore to avoid noise when adding/removing HA peer
+      ebs_block_device,
+      tags["ha"],
+    ]
+  }
+
+  # Make sure the ENI exists and subnet assertion ran
+  depends_on = [
+    aws_network_interface.this,
+    null_resource.assert_single_subnet
+  ]
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+########################################
+# modules/ec2/ec2.tf
 # EC2 instance using the ENI + inline EBS, with per-volume tags
 ########################################
 
@@ -184,7 +296,7 @@ resource "aws_ec2_tag" "data_names" {
 
   depends_on  = [aws_instance.this]
 }
-
+*/
 
 
 
