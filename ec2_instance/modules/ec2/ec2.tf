@@ -71,6 +71,10 @@ locals {
       device = (d.device != "" ? d.device : local._device_by_index[d.disk_index])
     })
   }
+
+  # Use a deterministic order for both defining blocks and later tagging
+  inline_disk_map_sorted   = { for k in sort(keys(local.inline_disks_by_key)) : k => local.inline_disks_by_key[k] }
+  inline_disk_names_by_idx = { for idx, k in sort(keys(local.inline_disks_by_key)) : idx => local.inline_disks_by_key[k].name }
 }
 
 resource "aws_instance" "this" {
@@ -88,7 +92,7 @@ resource "aws_instance" "this" {
   # IAM instance profile (resolved in data.tf; kept stable to avoid primary churn)
   iam_instance_profile = local.iam_instance_profile_name_effective
 
-  # Root volume (fast cleanup)
+  # Root volume
   root_block_device {
     volume_size           = tonumber(var.root_ebs_size)
     volume_type           = "gp3"
@@ -99,7 +103,7 @@ resource "aws_instance" "this" {
 
   # Inline data volumes (delete quickly with the instance)
   dynamic "ebs_block_device" {
-    for_each = local.inline_disks_by_key
+    for_each = local.inline_disk_map_sorted
     content {
       device_name           = ebs_block_device.value.device
       volume_type           = ebs_block_device.value.type
@@ -112,6 +116,16 @@ resource "aws_instance" "this" {
     }
   }
 
+  # Common tags for all volumes (root + data). Name is set per-volume below.
+  volume_tags = merge(
+    var.ec2_tags,
+    {
+      Environment = var.environment
+      Application = var.application_code
+      Hostname    = var.hostname
+    }
+  )
+
   tags = merge(var.ec2_tags, {
     Name         = var.hostname
     environment  = var.environment
@@ -121,13 +135,13 @@ resource "aws_instance" "this" {
     ha           = tostring(var.ha)
   })
 
-  # Keep the PRIMARY stable when you remove the SECONDARY (no replace churn)
+  # Keep PRIMARY stable when removing SECONDARY
   lifecycle {
     create_before_destroy = false
     ignore_changes = [
-      iam_instance_profile,  # HA flip/profile updates won't force replace
-      network_interface,     # never try to “move” primary attachment
-      ebs_block_device,      # avoid replacement if layout differs slightly
+      iam_instance_profile,
+      network_interface,
+      ebs_block_device,
       tags["ha"],
     ]
   }
@@ -136,6 +150,24 @@ resource "aws_instance" "this" {
     aws_network_interface.this,
     null_resource.assert_single_subnet
   ]
+}
+
+# ---- Per-volume Name tags (unique per disk) ----
+# Tag ROOT as "<hostname>-root"
+resource "aws_ec2_tag" "root_name" {
+  resource_id = aws_instance.this.root_block_device[0].volume_id
+  key         = "Name"
+  value       = "${var.hostname}-root"
+  depends_on  = [aws_instance.this]
+}
+
+# Tag DATA volumes as "<hostname>-<diskname>" in deterministic order
+resource "aws_ec2_tag" "data_names" {
+  for_each   = local.inline_disk_names_by_idx
+  resource_id = aws_instance.this.ebs_block_device[each.key].volume_id
+  key         = "Name"
+  value       = "${var.hostname}-${each.value}"
+  depends_on  = [aws_instance.this]
 }
 
 
@@ -149,6 +181,9 @@ resource "aws_instance" "this" {
 
 
 
+
+
+#OLD SETTING
 /*
 ########################################
 # modules/ec2/ec2.tf
