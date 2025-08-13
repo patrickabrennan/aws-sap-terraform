@@ -67,41 +67,18 @@ locals {
     d.disk_index => (d.device != "" ? d.device : "/dev/xvd${local.device_letters[d.disk_index]}")
   }
 
-  # ---------------------------
-  # SPLIT: inline vs external
-  # ---------------------------
-
-  # Volumes that should be created inline on the instance and deleted with it
-  inline_delete_on_term_names = ["usrsap", "sapmnt", "tmp", "swap"]
-
-  # Inline disks (created by aws_instance.ebs_block_device in ec2.tf)
-  inline_disks = [
-    for d in local.normalized_disks : merge(d, {
+  # Key each disk so we can for_each reliably
+  disks_by_key = {
+    for d in local.normalized_disks :
+    "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => merge(d, {
       device = (d.device != "" ? d.device : local._device_by_index[d.disk_index])
     })
-    if contains(local.inline_delete_on_term_names, d.name)
-  ]
-
-  # External disks (separate EBS resources + attachments)
-  external_disks = [
-    for d in local.normalized_disks : merge(d, {
-      device = (d.device != "" ? d.device : local._device_by_index[d.disk_index])
-    })
-    if !contains(local.inline_delete_on_term_names, d.name)
-  ]
-
-  # Key each EXTERNAL disk so we can for_each reliably
-  external_disks_by_key = {
-    for d in local.external_disks :
-    "${var.hostname}|${format("%03d", d.disk_index)}|${d.name}" => d
   }
 }
 
-# --------------------------------
-# Create EXTERNAL EBS volumes only
-# --------------------------------
+# Create all EBS volumes
 resource "aws_ebs_volume" "all_volumes" {
-  for_each = local.external_disks_by_key
+  for_each = local.disks_by_key
 
   availability_zone = local.ebs_instance_az_effective
   size              = each.value.size
@@ -124,33 +101,28 @@ resource "aws_ebs_volume" "all_volumes" {
       Role        = "ebs"
     }
   )
-
-  # Let AWS take its time to purge; Terraform will wait up to this
-  timeouts {
-    delete = "45m"
-  }
 }
 
-# Attach EXTERNAL volumes to the launched instance
+# Attach volumes to the launched instance
 resource "aws_volume_attachment" "all_attachments" {
   for_each = aws_ebs_volume.all_volumes
 
-  device_name = local.external_disks_by_key[each.key].device
+  device_name = local.disks_by_key[each.key].device
   volume_id   = each.value.id
   instance_id = aws_instance.this.id
 
-  # Ensure safe detach before instance delete/replace
-  skip_destroy = false
-  force_detach = true
-
+  # --- Ensures safe detach before instance delete/replace ---
+  skip_destroy = false         # actually destroy the attachment
+  force_detach = true          # API-level force, handles busy devices
   timeouts {
-    delete = "20m"
+    delete = "15m"             # give AWS time to detach cleanly
   }
-
-  # If the instance gets replaced, detach these first
+  # When the instance is replaced, attachments are replaced first (detached),
+  # so the new instance can re-attach cleanly.
   lifecycle {
     replace_triggered_by = [aws_instance.this.id]
   }
+  # ----------------------------------------------------------
 
   depends_on = [aws_instance.this]
 }
