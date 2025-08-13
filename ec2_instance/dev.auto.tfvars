@@ -7,11 +7,6 @@ vip_subnet_tag_key        = "sap_relevant"
 vip_subnet_tag_value      = "true"
 vip_subnet_selection_mode = "first"
 
-
-
-#default_availability_zone = "us-east-1a"
-#ha_azs                     = ["us-east-1a", "us-east-1b"]
-
 vpc_name = "sap_vpc"
 
 enable_vip_eni = true
@@ -22,7 +17,7 @@ instances_to_create = {
         "domain"            = "pabrennan.com"        
         "application_code"  = "hana"
         "application_SID"   = "D01"
-        "ha"                = false
+        "ha"                = true
         "ami_ID"            = "ami-0de716d6197524dd9"  #ami-01ee0f5d6dfe22e54"
         #"subnet_ID"        = "subnet-01c398cc6657832c1" 
         "key_name"          = "sap"
@@ -44,7 +39,7 @@ instances_to_create = {
         "domain"           = "pabrennan.com"        
         "application_code" = "nw"
         "application_SID"  = "D01"
-        "ha"               = false
+        "ha"               = true
         "ami_ID"           = "ami-0de716d6197524dd9"   #"ami-01ee0f5d6dfe22e54"
         #"subnet_ID"       = "subnet-02057fe2ecbbe5eeb"
         "key_name"         = "sap"
