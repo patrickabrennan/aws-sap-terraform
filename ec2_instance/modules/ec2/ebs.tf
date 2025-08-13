@@ -1,3 +1,4 @@
+/*
 ############################################
 # EBS layout + attachments for each instance
 ############################################
@@ -126,3 +127,4 @@ resource "aws_volume_attachment" "all_attachments" {
 
   depends_on = [aws_instance.this]
 }
+*/
