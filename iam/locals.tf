@@ -1,5 +1,7 @@
+#BEGIN NEW LOCAL.TF File @ 3:43PM 
 locals {
-  # Normalize account id (works with either `account_id` or `Account_ID` in tfvars)
+  # --- ACCOUNT ID NORMALIZATION ---
+  # Supports either `account_id` or legacy `Account_ID` from tfvars
   effective_account_id = (
     try(length(trimspace(var.account_id)) > 0, false)
     ? trimspace(var.account_id)
@@ -16,7 +18,8 @@ locals {
     "GitRepo"     = "https://github.com/aws-samples/aws-sap-terraform"
   }
 
-  # --- DYNAMIC (from SSM) ---
+  # --- DYNAMIC STATEMENTS (from SSM) ---
+  # Keep as-is from your original file
   iam_dynamic_policy_statements = {
     efs = {
       name = "iam-policy-sap-efs"
@@ -52,7 +55,11 @@ locals {
   }
 
   # --- SANITIZE tfvars (replace placeholders with real values) ---
-  # This lets you keep tfvars “as-is” except for swapping ${...} with __REGION__/__ACCOUNT_ID__.
+  # In dev.auto.tfvars, use __REGION__ and __ACCOUNT_ID__ instead of ${var...}
+  # Example:
+  #   arn:aws:ec2:__REGION__:__ACCOUNT_ID__:instance/*
+  #   arn:aws:ec2:__REGION__:__ACCOUNT_ID__:route-table/rtb-...
+  #   arn:aws:logs:__REGION__:__ACCOUNT_ID__:log-group:sap-logs:*
   iam_policies_sanitized = jsondecode(
     replace(
       replace(
@@ -65,15 +72,20 @@ locals {
     )
   )
 
-  # --- COMBINE USER + DYNAMIC ---
+  # --- COMBINE USER (sanitized) + DYNAMIC ---
   keys_iam_dynamic_policy_statements = keys(local.iam_dynamic_policy_statements)
   keys_iam_policies                  = keys(local.iam_policies_sanitized)
-  all_keys                           = distinct(concat(local.keys_iam_dynamic_policy_statements, local.keys_iam_policies))
+  all_keys                           = distinct(
+    concat(local.keys_iam_dynamic_policy_statements, local.keys_iam_policies)
+  )
 
   iam_combined_policies = {
     for k in local.all_keys :
     k => {
-      name       = try(local.iam_policies_sanitized[k].name, local.iam_dynamic_policy_statements[k].name),
+      name = try(
+        local.iam_policies_sanitized[k].name,
+        local.iam_dynamic_policy_statements[k].name
+      )
       statements = merge(
         try(local.iam_policies_sanitized[k].statements, {}),
         try(local.iam_dynamic_policy_statements[k].statements, {})
@@ -81,8 +93,7 @@ locals {
     }...
   }
 }
-
-
+#END NEW LOCAL.TF File @ 3:43PM 
 
 
 
