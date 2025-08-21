@@ -85,6 +85,58 @@ locals {
 
 
 
+
+
+module "ec2_instances" {
+  source   = "./modules/ec2"        # <-- keep your path
+  for_each = local.all_instances     # 1) iterate over expanded set (primary + HA)
+
+  # Region/VPC
+  aws_region = var.aws_region
+  vpc_id     = data.aws_vpc.sap.id
+
+  # Identity per node
+  hostname         = each.value.hostname
+  domain           = each.value.domain
+  application_code = each.value.application_code
+  application_SID  = each.value.application_SID
+
+  # 2) NEW: computed, not hard-coded
+  availability_zone = each.value.availability_zone
+  subnet_ID         = try(each.value.subnet_ID, local.subnet_id_by_az[each.value.availability_zone])
+
+  # Existing inputs (unchanged)
+  ami_ID        = each.value.ami_ID
+  instance_type = each.value.instance_type
+  key_name      = each.value.key_name
+  monitoring    = each.value.monitoring
+
+  # If your module's variable type for root_ebs_size is number, you can pass it directly.
+  # If it's string, keep tostring(). Match your module's var type.
+  root_ebs_size = tostring(each.value.root_ebs_size)
+
+  ec2_tags = each.value.ec2_tags
+
+  # Keep these filters if your module uses them; when subnet_ID is set, the module will prefer it.
+  subnet_tag_key        = try(var.subnet_tag_key, "")
+  subnet_tag_value      = try(var.subnet_tag_value, "")
+  subnet_name_wildcard  = try(var.subnet_name_wildcard, "")
+  subnet_selection_mode = try(var.subnet_selection_mode, "unique")
+
+  # VIP options (only if your module defines them)
+  enable_vip_eni            = try(var.enable_vip_eni, false)
+  enable_vip_eip            = try(var.enable_vip_eip, false)
+  vip_subnet_id             = try(var.vip_subnet_id, "")
+  vip_subnet_tag_key        = try(var.vip_subnet_tag_key, "")
+  vip_subnet_tag_value      = try(var.vip_subnet_tag_value, "")
+  vip_subnet_name_wildcard  = try(var.vip_subnet_name_wildcard, "")
+  vip_subnet_selection_mode = try(var.vip_subnet_selection_mode, "unique")
+}
+
+
+
+# Commnet out 8-21-2025
+/*
 module "ec2_instances" {
   for_each = local.nodes
   source   = "./modules/ec2"
@@ -140,3 +192,5 @@ module "ec2_instances" {
   vip_subnet_name_wildcard  = try(var.vip_subnet_name_wildcard, "")
   vip_subnet_selection_mode = try(var.vip_subnet_selection_mode, "unique") # or "first"
 }
+*/
+#end comment out on 8/21/2025
