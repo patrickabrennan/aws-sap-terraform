@@ -7,6 +7,45 @@
 # - variables.tf declaring the root variables you already use
 # - modules/ec2 module that accepts these arguments
 
+############################################
+# Auto AZ assignment (no hardcoded values)
+############################################
+
+locals {
+  # stable order for determinism
+  names_sorted = sort(keys(var.instances_to_create))
+
+  # Primary instances: AZ determined by index % AZ count
+  primaries = {
+    for name, cfg in var.instances_to_create :
+    name => merge(cfg, {
+      hostname          = try(cfg.hostname, name)
+      availability_zone = try(cfg.availability_zone, local.azs_sorted[index(local.names_sorted, name) % length(local.azs_sorted)])
+      ha                = try(cfg.ha, false)
+    })
+  }
+
+  # HA secondaries: next AZ (wrap) if ha = true
+  secondaries = {
+    for name, cfg in var.instances_to_create :
+    "${name}-b" => merge(cfg, {
+      hostname          = "${try(cfg.hostname, name)}-b"
+      availability_zone = local.azs_sorted[(index(local.names_sorted, name) + 1) % length(local.azs_sorted)]
+      ha                = true
+    })
+    if try(cfg.ha, false)
+  }
+
+  all_instances = merge(local.primaries, local.secondaries)
+}
+
+
+
+
+
+
+#commented out on 8/21/205
+/*
 locals {
   # Simple AZ sibling map (adjust if you use different AZs)
   az_sibling_map = {
@@ -40,6 +79,11 @@ locals {
   # Final set of nodes to create
   nodes = merge(local.primaries, local.secondaries)
 }
+*/
+#end comment out on 8/21/2025
+
+
+
 
 module "ec2_instances" {
   for_each = local.nodes
