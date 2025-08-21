@@ -12,7 +12,7 @@ vpc_name = "sap_vpc"
 enable_vip_eni = true
 instances_to_create = {
     sapd01db1 = {
-        availability_zone   = "us-east-1a"
+        #availability_zone   = "us-east-1a"
         #"private_ip"       = "10.0.16.144"
         "domain"            = "pabrennan.com"        
         "application_code"  = "hana"
@@ -34,7 +34,7 @@ instances_to_create = {
     }
 
     sapd01cs = {
-        availability_zone  = "us-east-1b"
+        #availability_zone  = "us-east-1b"
         #"private_ip"      = "10.0.0.145"
         "domain"           = "pabrennan.com"        
         "application_code" = "nw"
