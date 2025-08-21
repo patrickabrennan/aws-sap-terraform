@@ -91,6 +91,10 @@ module "ec2_instances" {
   source   = "./modules/ec2"        # <-- keep your path
   for_each = local.all_instances     # 1) iterate over expanded set (primary + HA)
 
+  # NEW: satisfy required module inputs
+  environment = var.environment              # <-- string like "dev", already in your workspace
+  ha          = try(each.value.ha, false)    # <-- per-instance HA flag (bool)
+
   # Region/VPC
   aws_region = var.aws_region
   vpc_id     = data.aws_vpc.sap.id
