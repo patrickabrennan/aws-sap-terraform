@@ -11,6 +11,17 @@ variable "environment" {
   type        = string
 }
 
+variable "account_id" {
+  type      = string
+  default   = ""
+  nullable  = true
+}
+variable "Account_ID" {
+  type      = string
+  default   = ""
+  nullable  = true
+}
+
 ########################################
 # VPC resolution (pick ONE path)
 ########################################
