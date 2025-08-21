@@ -34,7 +34,7 @@ instances_to_create = {
     }
 
     sapd01cs = {
-        #availability_zone  = "us-east-1b"
+        availability_zone  = "us-east-1b"
         #"private_ip"      = "10.0.0.145"
         "domain"           = "pabrennan.com"        
         "application_code" = "nw"
