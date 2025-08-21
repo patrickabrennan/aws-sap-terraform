@@ -1,11 +1,23 @@
 #BEGIN NEW LOCAL.TF File @ 3:43PM 
+#commented out 8/21/2025
+#locals {
+#  # --- ACCOUNT ID NORMALIZATION ---
+#  # Supports either `account_id` or legacy `Account_ID` from tfvars
+#  effective_account_id = (
+#    try(length(trimspace(var.account_id)) > 0, false)
+#    ? trimspace(var.account_id)
+#    : trimspace(var.Account_ID)
+#  )
+#end comment out 8/21/25
 locals {
-  # --- ACCOUNT ID NORMALIZATION ---
-  # Supports either `account_id` or legacy `Account_ID` from tfvars
-  effective_account_id = (
-    try(length(trimspace(var.account_id)) > 0, false)
-    ? trimspace(var.account_id)
-    : trimspace(var.Account_ID)
+  # --- ACCOUNT ID NORMALIZATION (dynamic, with overrides) ---
+  # 1) If var.account_id is set, use it
+  # 2) else if legacy var.Account_ID is set, use it
+  # 3) else use the live account from the provider creds
+  effective_account_id = coalesce(
+    try(length(trimspace(var.account_id))  > 0 ? trimspace(var.account_id)  : null, null),
+    try(length(trimspace(var.Account_ID)) > 0 ? trimspace(var.Account_ID) : null, null),
+    data.aws_caller_identity.current.account_id
   )
 
   # --- TAGS ---
