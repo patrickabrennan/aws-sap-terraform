@@ -8,6 +8,17 @@ variable "environment" {
   type        = string
 }
 
+variable "account_id" {
+  type      = string
+  default   = ""
+  nullable  = true
+}
+variable "Account_ID" {
+  type      = string
+  default   = ""
+  nullable  = true
+}
+
 variable "iam_roles" {
   description = "IAM roles to create"
   type        = any
