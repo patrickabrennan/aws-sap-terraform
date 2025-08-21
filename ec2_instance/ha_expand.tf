@@ -6,9 +6,10 @@
 #                     partner_availability_zone is provided in the entry.
 ############################################
 
-data "aws_availability_zones" "this" {
-  state = "available"
-}
+#commnet out as I have this in data.tf on 8-21-2025
+#data "aws_availability_zones" "this" {
+#  state = "available"
+#}
 
 locals {
   # convenience list of AZ names
