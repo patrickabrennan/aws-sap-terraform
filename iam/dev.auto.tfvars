@@ -88,7 +88,8 @@ iam_policies = {
         actions = [
           "ec2:ReplaceRoute",
         ]
-        resources = ["arn:aws:ec2:${var.aws_region}:${var.account_id}:route-table/rtb-09728cc740c68d955"]
+        #resources = ["arn:aws:ec2:${var.aws_region}:${var.account_id}:route-table/rtb-09728cc740c68d955"]
+        resources = ["arn:aws:ec2:__REGION__:__ACCOUNT_ID__:route-table/rtb-09728cc740c68d955"]
       }
       stmt2 = {
         effect = "Allow"
@@ -122,7 +123,8 @@ iam_policies = {
           "ec2:StartInstances",
           "ec2:StopInstances",
         ]
-        resources = ["arn:aws:ec2:${var.aws_region}:${var.account_id}:instance/*"]
+        #resources = ["arn:aws:ec2:${var.aws_region}:${var.account_id}:instance/*"]
+        resources = ["arn:aws:logs:__REGION__:__ACCOUNT_ID__:instance:*"]
       }
     }
   },
@@ -160,7 +162,8 @@ iam_policies = {
           "logs:PutLogEvents",
           "logs:TagLogGroup"
         ]
-        resources = ["arn:aws:logs:${var.aws_region}:${var.account_id}:log-group:sap-logs:*"]
+        #resources = ["arn:aws:logs:${var.aws_region}:${var.account_id}:log-group:sap-logs:*"]
+        resources = ["arn:aws:logs:__REGION__:__ACCOUNT_ID__:log-group:sap-logs:*"]
       }
     }
   }
