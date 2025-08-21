@@ -156,7 +156,8 @@ variable "sap_discovery_tag" {
 variable "instances_to_create" {
   description = "Map of instances to create"
   type = map(object({
-    availability_zone        = string
+    #availability_zone        = string
+    availability_zone        = optional(string)  # auto-assigned if unset
     domain                   = string
     application_code         = string
     application_SID          = string
@@ -168,7 +169,7 @@ variable "instances_to_create" {
     ec2_tags                 = map(any)
     instance_type            = string
     private_ip               = optional(string)
-    subnet_ID                = optional(string)
+    subnet_ID                = optional(string)  # still allowed; we will autoselect by AZ if empty
 
     # Optional HANA/NW storage knobs
     hana_data_storage_type   = optional(string)
