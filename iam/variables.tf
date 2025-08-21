@@ -9,10 +9,12 @@ variable "environment" {
 }
 
 variable "account_id" {
-  type      = string
-  default   = ""
-  nullable  = true
+  description = "Optional override. Leave empty to auto-detect from aws_caller_identity."
+  type        = string
+  default     = ""
+  nullable    = true
 }
+
 variable "Account_ID" {
   type      = string
   default   = ""
