@@ -40,4 +40,5 @@ variable "app_sg_list" {
 variable "vpc_id" {
   description = "VPC ID for the selected environment"
   type        = string
+  default     = ""
 }
