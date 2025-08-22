@@ -177,5 +177,20 @@ variable "instances_to_create" {
     hana_backup_storage_type = optional(string)
     hana_shared_storage_type = optional(string)
     custom_ebs_config        = optional(any)
+
+
+    #added 8/22/2025 for customer EBS sizes
+    # Per-instance custom EBS layout (optional)
+    # If you want strict typing, use list(object({ ... })) instead of any:
+    custom_ebs_config        = optional(any)
+    # Example strict version:
+     custom_ebs_config = optional(list(object({
+       identifier = string
+       disk_nb    = number
+       disk_size  = number
+       disk_type  = string
+       iops       = optional(number)
+       throughput = optional(number)
+     })))
   }))
 }
