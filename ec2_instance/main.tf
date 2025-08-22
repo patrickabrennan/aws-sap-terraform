@@ -120,6 +120,13 @@ module "ec2_instances" {
   source   = "./modules/ec2"        # <-- keep your path
   for_each = local.all_instances     # 1) iterate over expanded set (primary + HA)
 
+  #added 8/22/2025
+  depends_on = [null_resource.assert_two_azs]
+
+  availability_zone = each.value.availability_zone
+  subnet_ID         = local.subnet_id_by_az[each.value.availability_zone]
+  #end add 8/22/2025
+
   # NEW: satisfy required module inputs
   environment = var.environment              # <-- string like "dev", already in your workspace
   ha          = try(each.value.ha, false)    # <-- per-instance HA flag (bool)
@@ -134,10 +141,11 @@ module "ec2_instances" {
   application_code = each.value.application_code
   application_SID  = each.value.application_SID
 
+  #comment out 8/22/2025
   # 2) NEW: computed, not hard-coded
   availability_zone = each.value.availability_zone
   subnet_ID         = try(each.value.subnet_ID, local.subnet_id_by_az[each.value.availability_zone])
-
+  #end commnet out 8/22/2025
   # Existing inputs (unchanged)
   ami_ID        = each.value.ami_ID
   instance_type = each.value.instance_type
