@@ -1,20 +1,43 @@
-efs_to_create = {
+#added 8/21/2025
+{
   "D01-sapmnt" = {
     access_point_info = {
       posix_user = {
-        gid = 5001,
+        gid = 5001
         uid = 3001
-      },
+      }
       root_directory = {
+        path = "/"
         creation_info = {
-          owner_gid   = 5001,
-          owner_uid   = 3001,
+          owner_gid   = 5001
+          owner_uid   = 3001
           permissions = 0775
-        },
-        path : "/",
+        }
       }
     }
-   }
+  }
+}
+
+
+
+
+#efs_to_create = {
+#  "D01-sapmnt" = {
+#    access_point_info = {
+#      posix_user = {
+#        gid = 5001,
+#        uid = 3001
+#      },
+#      root_directory = {
+#        creation_info = {
+#          owner_gid   = 5001,
+#          owner_uid   = 3001,
+#          permissions = 0775
+#        },
+#        path : "/",
+#      }
+#    }
+#   }
   #},
   #"D01-trans" = {
   #  access_point_info = {
