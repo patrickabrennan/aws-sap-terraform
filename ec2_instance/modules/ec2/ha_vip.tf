@@ -1,10 +1,13 @@
 ############################################
 # VIP subnet resolution (no AZ input)
 # - Select VIP candidate subnets by VPC + tags/Name
-# - Then constrain to the instance's AZ (so the ENI can attach)
+# - Constrain to the instance's AZ (so the ENI can attach)
+# - Avoid apply-time values in for_each/count
 ############################################
 
-data "aws_subnets" "vip_filters" {
+# When an explicit VIP subnet is not provided, look up subnets in the instance's AZ.
+# All inputs used here are plan-known (vars, data, locals), so planning is stable.
+data "aws_subnets" "vip_in_instance_az" {
   count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
 
   filter {
@@ -12,6 +15,13 @@ data "aws_subnets" "vip_filters" {
     values = [var.vpc_id]
   }
 
+  # Constrain to the instance's AZ so the ENI can attach there
+  filter {
+    name   = "availability-zone"
+    values = [local.instance_az_effective]
+  }
+
+  # Optional narrowing: tag filter
   dynamic "filter" {
     for_each = (var.vip_subnet_tag_key != "" && var.vip_subnet_tag_value != "") ? [1] : []
     content {
@@ -20,8 +30,9 @@ data "aws_subnets" "vip_filters" {
     }
   }
 
+  # Optional narrowing: Name wildcard
   dynamic "filter" {
-    for_each = (var.vip_subnet_name_wildcard != "") ? [1] : []
+    for_each = var.vip_subnet_name_wildcard != "" ? [1] : []
     content {
       name   = "tag:Name"
       values = [var.vip_subnet_name_wildcard]
@@ -30,44 +41,34 @@ data "aws_subnets" "vip_filters" {
 }
 
 locals {
-  _vip_ids_raw = concat(
-    (var.vip_subnet_id != "" ? [var.vip_subnet_id] : []),
-    (var.enable_vip_eni ? try(data.aws_subnets.vip_filters[0].ids, []) : [])
+  # Candidate pool:
+  # 1) explicit vip_subnet_id (if provided)
+  # 2) else the list discovered in THIS instance's AZ
+  _vip_candidates = (
+    var.vip_subnet_id != ""
+    ? [var.vip_subnet_id]
+    : try(data.aws_subnets.vip_in_instance_az[0].ids, [])
   )
 
-  _vip_ids_clean = [
-    for id in local._vip_ids_raw : id
-    if id != null && trim(id, " ") != ""
-  ]
-}
+  # Selection policy
+  _vip_need_unique = var.vip_subnet_selection_mode != "first"
 
-# Get AZ for each VIP candidate to match instance AZ from data.tf
-data "aws_subnet" "vip_meta" {
-  for_each = var.enable_vip_eni ? toset(local._vip_ids_clean) : []
-  id       = each.value
-}
-
-locals {
-  _vip_same_az_ids = [
-    for s in data.aws_subnet.vip_meta : s.id
-    if try(s.availability_zone, "") == local.instance_az_effective
-  ]
-
-  _vip_pool = length(local._vip_same_az_ids) > 0 ? local._vip_same_az_ids : []
-
-  vip_need_unique = var.vip_subnet_selection_mode != "first"
-
+  # Final choice:
+  # - If no candidates: fallback to primary subnet (same AZ by definition)
+  # - If "unique": require exactly one
+  # - If "first": take the first (sorted for determinism)
   vip_subnet_id_effective = (
-    length(local._vip_pool) == 0
-      ? local.primary_subnet_id  # fallback to primary subnet (same AZ)
+    length(local._vip_candidates) == 0
+      ? local.primary_subnet_id
       : (
-          local.vip_need_unique
-            ? (length(local._vip_pool) == 1 ? local._vip_pool[0] : "")
-            : sort(local._vip_pool)[0]
+          local._vip_need_unique
+            ? (length(local._vip_candidates) == 1 ? local._vip_candidates[0] : "")
+            : sort(local._vip_candidates)[0]
         )
   )
 }
 
+# Fail fast with a helpful message when we cannot select a subnet
 resource "null_resource" "assert_vip_subnet" {
   count = var.enable_vip_eni ? 1 : 0
 
@@ -75,17 +76,18 @@ resource "null_resource" "assert_vip_subnet" {
     precondition {
       condition     = local.vip_subnet_id_effective != ""
       error_message = <<-EOT
-        VIP ENI cannot be created: no suitable subnet found in ${var.vpc_id} sharing AZ ${local.instance_az_effective}.
-        Narrow selection with:
-          - vip_subnet_tag_key + vip_subnet_tag_value
-          - vip_subnet_name_wildcard (e.g., "*public*" or "*private*")
-        Or auto-pick by setting:
-          - vip_subnet_selection_mode = "first"
+        VIP ENI cannot be created: no suitable subnet found in VPC ${var.vpc_id} within AZ ${local.instance_az_effective}.
+        Try one of:
+          - Set vip_subnet_tag_key + vip_subnet_tag_value to narrow to intended subnets
+          - Set vip_subnet_name_wildcard (e.g., "*public*" or "*private*")
+          - Set vip_subnet_selection_mode = "first" to auto-pick when multiple match
+          - Provide vip_subnet_id explicitly
       EOT
     }
   }
 }
 
+# Create the VIP ENI in the resolved subnet (same AZ as the instance)
 resource "aws_network_interface" "ha_vip" {
   count = var.enable_vip_eni ? 1 : 0
 
@@ -106,120 +108,3 @@ resource "aws_network_interface" "ha_vip" {
     }
   )
 }
-
-
-
-
-
-
-
-
-/*
-############################################
-# VIP subnet resolution (no AZ input)
-# - Select VIP candidate subnets by VPC + tags/Name
-# - Then constrain to the instance's AZ (so the ENI can attach)
-############################################
-
-# Candidate VIP subnets by VPC + optional tag/name
-data "aws_subnets" "vip_filters" {
-  count = (var.enable_vip_eni && var.vip_subnet_id == "") ? 1 : 0
-
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-
-  dynamic "filter" {
-    for_each = (var.vip_subnet_tag_key != "" && var.vip_subnet_tag_value != "") ? [1] : []
-    content {
-      name   = "tag:${var.vip_subnet_tag_key}"
-      values = [var.vip_subnet_tag_value]
-    }
-  }
-
-  dynamic "filter" {
-    for_each = (var.vip_subnet_name_wildcard != "") ? [1] : []
-    content {
-      name   = "tag:Name"
-      values = [var.vip_subnet_name_wildcard]
-    }
-  }
-}
-
-locals {
-  # Pool: explicit ID (if any) + filtered list (when enabled)
-  _vip_ids_raw = concat(
-    (var.vip_subnet_id != "" ? [var.vip_subnet_id] : []),
-    (var.enable_vip_eni ? try(data.aws_subnets.vip_filters[0].ids, []) : [])
-  )
-  _vip_ids_clean = [for id in local._vip_ids_raw : id if id != null && trim(id, " ") != ""]
-}
-
-# Fetch AZ metadata for each VIP candidate to match the instance AZ
-data "aws_subnet" "vip_meta" {
-  for_each = var.enable_vip_eni ? toset(local._vip_ids_clean) : []
-  id       = each.value
-}
-
-locals {
-  # Keep only VIP subnets that share the instance's AZ (from data.tf)
-  _vip_same_az_ids = [
-    for s in data.aws_subnet.vip_meta : s.id
-    if try(s.availability_zone, "") == local.instance_az_effective
-  ]
-
-  _vip_pool = length(local._vip_same_az_ids) > 0 ? local._vip_same_az_ids : []
-
-  vip_need_unique = var.vip_subnet_selection_mode != "first"
-  vip_subnet_id_effective = (
-    length(local._vip_pool) == 0
-      ? local.primary_subnet_id  # fallback to the primary subnet (same AZ by definition)
-      : (
-          local.vip_need_unique
-            ? (length(local._vip_pool) == 1 ? local._vip_pool[0] : "")
-            : sort(local._vip_pool)[0]
-        )
-  )
-}
-
-# Enforce: only when VIP is enabled
-resource "null_resource" "assert_vip_subnet" {
-  count = var.enable_vip_eni ? 1 : 0
-
-  lifecycle {
-    precondition {
-      condition     = local.vip_subnet_id_effective != ""
-      error_message = <<-EOT
-        VIP ENI cannot be created: no suitable subnet found in ${var.vpc_id} sharing AZ ${local.instance_az_effective}.
-        Narrow selection with:
-          - vip_subnet_tag_key + vip_subnet_tag_value
-          - vip_subnet_name_wildcard (e.g., "*public*" or "*private*")
-        Or auto-pick by setting:
-          - vip_subnet_selection_mode = "first"
-      EOT
-    }
-  }
-}
-
-# VIP ENI in the chosen subnet (same AZ as the instance)
-resource "aws_network_interface" "ha_vip" {
-  count = var.enable_vip_eni ? 1 : 0
-
-  subnet_id         = local.vip_subnet_id_effective
-  description       = "${var.hostname}-vip"
-  source_dest_check = var.application_code == "hana" ? false : true
-
-  security_groups = local.resolved_security_group_ids
-
-  tags = merge(
-    var.ec2_tags,
-    {
-      Name        = "${var.hostname}-vip"
-      Environment = var.environment
-      Application = var.application_code
-      Hostname    = var.hostname
-    }
-  )
-}
-*/
