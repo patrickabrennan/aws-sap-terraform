@@ -156,6 +156,47 @@ variable "sap_discovery_tag" {
 variable "instances_to_create" {
   description = "Map of instances to create"
   type = map(object({
+    # Always-present fields
+    domain           = string
+    application_code = string
+    application_SID  = string
+    ami_ID           = string
+    key_name         = string
+    monitoring       = bool
+    root_ebs_size    = number
+    ec2_tags         = map(string)
+    instance_type    = string
+
+    # Optional / per-instance overrides
+    availability_zone        = optional(string)
+    private_ip               = optional(string)
+    subnet_ID                = optional(string)
+    ha                       = optional(bool, false)
+
+    # Optional HANA/NW storage knobs
+    hana_data_storage_type   = optional(string)
+    hana_logs_storage_type   = optional(string)
+    hana_backup_storage_type = optional(string)
+    hana_shared_storage_type = optional(string)
+
+    # Optional per-instance custom EBS layout (choose strict schema)
+    custom_ebs_config = optional(list(object({
+      identifier = string
+      disk_nb    = number
+      disk_size  = number
+      disk_type  = string
+      iops       = optional(number)
+      throughput = optional(number)
+    })))
+  }))
+}
+
+
+
+/*
+variable "instances_to_create" {
+  description = "Map of instances to create"
+  type = map(object({
     #availability_zone        = string
     availability_zone        = optional(string)  # auto-assigned if unset
     domain                   = string
@@ -194,3 +235,4 @@ variable "instances_to_create" {
      })))
   }))
 }
+*/
