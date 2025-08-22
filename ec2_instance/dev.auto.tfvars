@@ -3,9 +3,9 @@ subnet_tag_key        = "sap_relevant"
 subnet_tag_value      = "true"
 subnet_selection_mode = "unique"     #"first"   # keep 'first' to auto-pick if >1 still match
 
-#vip_subnet_tag_key        = "sap_relevant"
-#vip_subnet_tag_value      = "true"
-#vip_subnet_selection_mode = "first"
+vip_subnet_tag_key        = "sap_relevant"
+vip_subnet_tag_value      = "true"
+vip_subnet_selection_mode = "unique"       # "first"
 
 vpc_name = "sap_vpc"
 
