@@ -108,3 +108,11 @@ locals {
   }
 }
 
+#added 8/22/2025
+# after local.subnet_id_by_az
+locals {
+  azs_with_subnets = [
+    for az in local.azs_sorted : az
+    if try(local.subnet_id_by_az[az] != null && local.subnet_id_by_az[az] != "", false)
+  ]
+}
