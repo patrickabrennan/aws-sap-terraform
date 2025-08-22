@@ -5,9 +5,34 @@
 # - Derive instance AZ from inputs/metadata
 ############################################
 
-# AZ requested by the caller (root workspace decides cross-AZ placement)
+# If the caller provided a subnet_ID, we can derive the AZ from it
+data "aws_subnet" "from_input" {
+  count = var.subnet_ID != "" ? 1 : 0
+  id    = var.subnet_ID
+}
+
 locals {
-  instance_az_requested = var.availability_zone
+  # Determine the AZ we should use:
+  # 1) var.availability_zone (root should pass this)
+  # 2) else, derive from the provided subnet_ID
+  instance_az_requested = coalesce(
+    try(trim(var.availability_zone), null),
+    try(data.aws_subnet.from_input[0].availability_zone, null)
+  )
+}
+
+# Ensure we know the AZ before continuing
+resource "null_resource" "assert_az_known" {
+  lifecycle {
+    precondition {
+      condition     = local.instance_az_requested != null && local.instance_az_requested != ""
+      error_message = <<-EOT
+        availability_zone is not known: neither 'availability_zone' was passed
+        nor could it be derived from 'subnet_ID'.
+        Pass availability_zone from the root module, or provide subnet_ID.
+      EOT
+    }
+  }
 }
 
 # When subnet_ID isn't provided, search inside the requested AZ only
@@ -42,10 +67,12 @@ data "aws_subnets" "by_filters" {
       values = [var.subnet_name_wildcard]
     }
   }
+
+  depends_on = [null_resource.assert_az_known]
 }
 
 locals {
-  # Candidate pool comes from filters only when subnet_ID not passed
+  # Candidate pool is either the explicit subnet_ID or the filtered list
   _ids_from_filters = try(data.aws_subnets.by_filters[0].ids, [])
 
   need_unique = var.subnet_selection_mode != "first"
@@ -53,7 +80,7 @@ locals {
   # Final selection:
   # - If caller gave subnet_ID => use it
   # - Else "unique" requires exactly one match
-  # - Else "first" picks the sorted first match (deterministic)
+  # - Else "first" picks the first (sorted) match if any
   subnet_id_effective = (
     var.subnet_ID != "" ? var.subnet_ID :
     (
@@ -81,16 +108,16 @@ resource "null_resource" "assert_single_subnet" {
   }
 }
 
-# Chosen primary subnet (resolve metadata for AZ confirmation, etc.)
+# Resolve the chosen subnet for metadata/confirmation
 data "aws_subnet" "effective" {
   count = local.subnet_id_effective != "" ? 1 : 0
   id    = local.subnet_id_effective
 }
 
 locals {
-  # Use the caller's requested AZ; if subnet metadata is present, it should match
-  instance_az_effective = try(data.aws_subnet.effective[0].availability_zone, local.instance_az_requested)
   primary_subnet_id     = local.subnet_id_effective
+  # Should match instance_az_requested; keep fallback to requested AZ for plan-safety
+  instance_az_effective = try(data.aws_subnet.effective[0].availability_zone, local.instance_az_requested)
 }
 
 #############################################
@@ -138,6 +165,12 @@ locals {
         )
   )
 }
+
+
+
+
+
+
 
 
 
