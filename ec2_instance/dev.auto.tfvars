@@ -44,4 +44,73 @@ instances_to_create = {
         }
         "instance_type"    = "r5.4xlarge"
     }
+
+sapd02db1 = {
+    "domain"           = "pabrennan.com"
+    "application_code" = "hana"
+    "application_SID"  = "D02"
+    "ha"               = true
+    "ami_ID"           = "ami-0de716d6197524dd9"
+    "key_name"         = "sap"
+    "monitoring"       = false
+    "root_ebs_size"    = 80
+    "ec2_tags" = {
+      "tag_key_1" = "tag_value_1"
+    }
+    "instance_type" = "r5.8xlarge"
+    "custom_ebs_config" = [
+      {
+        identifier = "data",
+        disk_nb    = 3,
+        disk_size  = 225,
+        disk_type  = "gp2"
+      },
+      {
+        identifier = "log",
+        disk_nb    = 2,
+        disk_size  = 300,
+        iops       = 3000,
+        throughput = 250,
+        disk_type  = "gp3"
+      },
+      {
+        identifier = "backup",
+        disk_nb    = 1,
+        disk_size  = 512,
+        iops       = 4500,
+        throughput = 750,
+        disk_type  = "gp3"
+      },
+      {
+        identifier = "shared",
+        disk_nb    = 1,
+        disk_size  = 512,
+        disk_type  = "gp2"
+      },
+      {
+        identifier = "tmp",
+        disk_nb    = 1,
+        disk_size  = 30,
+        iops       = 3000,
+        throughput = 125,
+        disk_type  = "gp3"
+      },
+      {
+        identifier = "usrsap",
+        disk_nb    = 1,
+        disk_size  = 60,
+        iops       = 3000,
+        throughput = 125,
+        disk_type  = "gp3"
+      },
+      {
+        identifier = "swap",
+        disk_nb    = 1,
+        disk_size  = 20,
+        iops       = 3000,
+        throughput = 125,
+        disk_type  = "gp3"
+      }
+    ]
+  }
 }
