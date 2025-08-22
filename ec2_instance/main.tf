@@ -133,9 +133,13 @@ module "ec2_instances" {
   application_code = each.value.application_code
   application_SID  = each.value.application_SID
 
-  # Placement — define ONCE
+
+  #changed 8/22/2025
   availability_zone = each.value.availability_zone
-  subnet_ID         = try(each.value.subnet_ID, local.subnet_id_by_az[each.value.availability_zone])
+  subnet_ID         = local.subnet_id_by_az[each.value.availability_zone]
+  # Placement — define ONCE
+  #availability_zone = each.value.availability_zone
+  #subnet_ID         = try(each.value.subnet_ID, local.subnet_id_by_az[each.value.availability_zone])
 
   # Other inputs unchanged…
   environment   = var.environment
