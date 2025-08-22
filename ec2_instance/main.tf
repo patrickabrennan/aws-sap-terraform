@@ -116,6 +116,60 @@ locals {
 
 
 
+
+module "ec2_instances" {
+  source   = "./modules/ec2"
+  for_each = local.all_instances
+
+  depends_on = [null_resource.assert_two_azs]
+
+  # Region/VPC
+  aws_region = var.aws_region
+  vpc_id     = data.aws_vpc.sap.id
+
+  # Identity
+  hostname         = each.value.hostname
+  domain           = each.value.domain
+  application_code = each.value.application_code
+  application_SID  = each.value.application_SID
+
+  # Placement — define ONCE
+  availability_zone = each.value.availability_zone
+  subnet_ID         = try(each.value.subnet_ID, local.subnet_id_by_az[each.value.availability_zone])
+
+  # Other inputs unchanged…
+  environment   = var.environment
+  ha            = try(each.value.ha, false)
+  ami_ID        = each.value.ami_ID
+  instance_type = each.value.instance_type
+  key_name      = each.value.key_name
+  monitoring    = each.value.monitoring
+  root_ebs_size = tostring(each.value.root_ebs_size)
+  ec2_tags      = each.value.ec2_tags
+
+  subnet_tag_key        = try(var.subnet_tag_key, "")
+  subnet_tag_value      = try(var.subnet_tag_value, "")
+  subnet_name_wildcard  = try(var.subnet_name_wildcard, "")
+  subnet_selection_mode = try(var.subnet_selection_mode, "unique")
+
+  enable_vip_eni            = try(var.enable_vip_eni, false)
+  enable_vip_eip            = try(var.enable_vip_eip, false)
+  vip_subnet_id             = try(var.vip_subnet_id, "")
+  vip_subnet_tag_key        = try(var.vip_subnet_tag_key, "")
+  vip_subnet_tag_value      = try(var.vip_subnet_tag_value, "")
+  vip_subnet_name_wildcard  = try(var.vip_subnet_name_wildcard, "")
+  vip_subnet_selection_mode = try(var.vip_subnet_selection_mode, "unique")
+}
+
+
+
+
+
+
+
+
+
+/*
 module "ec2_instances" {
   source   = "./modules/ec2"        # <-- keep your path
   for_each = local.all_instances     # 1) iterate over expanded set (primary + HA)
@@ -173,7 +227,7 @@ module "ec2_instances" {
   vip_subnet_name_wildcard  = try(var.vip_subnet_name_wildcard, "")
   vip_subnet_selection_mode = try(var.vip_subnet_selection_mode, "unique")
 }
-
+*/
 
 
 # Commnet out 8-21-2025
