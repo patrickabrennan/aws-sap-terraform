@@ -37,6 +37,19 @@ resource "null_resource" "assert_vpc" {
   }
 }
 
+#added 8/22/2025
+resource "null_resource" "assert_two_azs" {
+  lifecycle {
+    precondition {
+      condition     = length(local.azs_with_subnets) >= 2
+      error_message = "Need subnets (matching your filters) in at least 2 AZs of VPC ${data.aws_vpc.sap.id}."
+    }
+  }
+}
+#end commnet out 8/22/2025
+
+
+
 data "aws_vpc" "sap" {
   id         = local.vpc_id_effective
   depends_on = [null_resource.assert_vpc]
