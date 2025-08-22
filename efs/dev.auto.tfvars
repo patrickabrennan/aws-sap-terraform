@@ -65,3 +65,15 @@ efs_to_create = {
   #  }
   #}
 }
+
+#added the following on 8/21/2025"
+keys_to_create = {
+  "ebs" = {
+    alias_name = "kms-alias-ebs"
+    enable_key_rotation = true
+  }
+  "efs"        = {}
+  "cloudwatch" = {}
+  "s3"         = {}
+}
+
