@@ -11,6 +11,35 @@
 # Auto AZ assignment (no hardcoded values)
 ############################################
 
+#added 8/22/2025
+locals {
+  names_sorted = sort(keys(var.instances_to_create))
+  _azs = local.azs_with_subnets
+
+  primaries = {
+    for name, cfg in var.instances_to_create :
+    name => merge(cfg, {
+      hostname          = try(cfg.hostname, name)
+      availability_zone = try(cfg.availability_zone, local._azs[index(local.names_sorted, name) % length(local._azs)])
+      ha                = try(cfg.ha, false)
+    })
+  }
+
+  secondaries = {
+    for name, cfg in var.instances_to_create :
+    "${name}-b" => merge(cfg, {
+      hostname          = "${try(cfg.hostname, name)}-b"
+      availability_zone = local._azs[(index(local.names_sorted, name) + 1) % length(local._azs)]
+      ha                = true
+    })
+    if try(cfg.ha, false)
+  }
+
+  all_instances = merge(local.primaries, local.secondaries)
+}
+
+#commented out 8/22/2025
+/*
 locals {
   # stable order for determinism
   names_sorted = sort(keys(var.instances_to_create))
@@ -38,7 +67,7 @@ locals {
 
   all_instances = merge(local.primaries, local.secondaries)
 }
-
+*/
 
 
 
