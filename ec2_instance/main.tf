@@ -1,12 +1,6 @@
 ############################################
 # Root main.tf — Stable primary, optional HA secondary
 ############################################
-# Assumes data.tf defines:
-#   - data.aws_vpc.sap
-#   - local.azs_with_subnets  (list of AZs that actually have a subnet)
-#   - local.subnet_id_by_az   (map AZ -> subnet id)
-#   - null_resource.assert_two_azs (optional guard ensuring >= 2 AZs)
-############################################
 
 ############################################
 # Auto AZ assignment (no hardcoded values)
@@ -16,7 +10,7 @@ locals {
   _azs         = local.azs_with_subnets
 }
 
-# Guard: ensure we actually have AZs
+# Minimal guard: ensure we actually have AZs to choose from
 resource "null_resource" "assert_have_azs" {
   lifecycle {
     precondition {
@@ -27,7 +21,7 @@ resource "null_resource" "assert_have_azs" {
 }
 
 locals {
-  # Deterministic base AZ per *primary* name
+  # Deterministic base AZ per *primary* name (plan-safe)
   base_az_for_name = {
     for idx, name in local.names_sorted :
     name => local._azs[idx % length(local._azs)]
@@ -50,37 +44,25 @@ locals {
     if try(cfg.ha, false)
   }
 
-  # Final AZ per expanded instance key
-  az_for_instance = merge(
-    { for name, _ in var.instances_to_create : name => local.primary_az_for_name[name] },
-    local.secondary_az_for_name
-  )
+  # The set of AZs we will actually use (for a light sanity guard below)
+  azs_in_use = toset(concat(
+    [for name, _ in var.instances_to_create : local.primary_az_for_name[name]],
+    [for k, _ in local.secondary_az_for_name : local.secondary_az_for_name[k]]
+  ))
 
-  # Diagnostics
-  az_blanks = [for k, az in local.az_for_instance : k if !(try(trim(az) != "", false))]
-  az_without_subnet = [
-    for k, az in local.az_for_instance : k
-    if try(trim(az) != "", false) && !(contains(keys(local.subnet_id_by_az), az))
+  # Any AZs that don't have a mapped subnet id
+  azs_missing_subnet = [
+    for az in local.azs_in_use : az
+    if !(contains(keys(local.subnet_id_by_az), az))
   ]
-}
-
-# Guard: AZ must be non-empty for every expanded instance
-resource "null_resource" "assert_all_instances_have_az" {
-  depends_on = [null_resource.assert_have_azs]
-  lifecycle {
-    precondition {
-      condition     = length(local.az_blanks) == 0
-      error_message = "Some instances computed a blank availability_zone: ${join(", ", local.az_blanks)}. Check azs_with_subnets and instances_to_create."
-    }
-  }
 }
 
 # Guard: each chosen AZ must have a mapped subnet id
 resource "null_resource" "assert_all_instances_have_subnet" {
   lifecycle {
     precondition {
-      condition     = length(local.az_without_subnet) == 0
-      error_message = "Some instances map to an AZ without a subnet id: ${join(", ", local.az_without_subnet)}. Check subnet_id_by_az in data.tf."
+      condition     = length(local.azs_missing_subnet) == 0
+      error_message = "Some chosen AZs do not have a subnet id mapping in local.subnet_id_by_az: ${join(", ", local.azs_missing_subnet)}."
     }
   }
 }
@@ -94,9 +76,8 @@ module "ec2_instances_primary" {
 
   depends_on = [
     null_resource.assert_have_azs,
-    null_resource.assert_all_instances_have_az,
     null_resource.assert_all_instances_have_subnet,
-    null_resource.assert_two_azs, # remove from this list if you didn’t define it in data.tf
+    null_resource.assert_two_azs, # remove if you didn't define it in data.tf
   ]
 
   # Region/VPC
@@ -109,7 +90,7 @@ module "ec2_instances_primary" {
   application_code = each.value.application_code
   application_SID  = each.value.application_SID
 
-  # Placement
+  # Placement — guarded AZ and mapped subnet
   availability_zone = local.primary_az_for_name[each.key]
   subnet_ID         = local.subnet_id_by_az[local.primary_az_for_name[each.key]]
 
@@ -154,9 +135,8 @@ module "ec2_instances_secondary" {
 
   depends_on = [
     null_resource.assert_have_azs,
-    null_resource.assert_all_instances_have_az,
     null_resource.assert_all_instances_have_subnet,
-    null_resource.assert_two_azs, # remove from this list if you didn’t define it in data.tf
+    null_resource.assert_two_azs, # remove if you didn't define it in data.tf
   ]
 
   # Region/VPC
@@ -169,7 +149,7 @@ module "ec2_instances_secondary" {
   application_code = each.value.application_code
   application_SID  = each.value.application_SID
 
-  # Placement — next AZ (wrap) and its subnet
+  # Placement — next AZ (wrap) and mapped subnet
   availability_zone = local.secondary_az_for_name[each.key]
   subnet_ID         = local.subnet_id_by_az[local.secondary_az_for_name[each.key]]
 
