@@ -1,19 +1,22 @@
 ############################################
 # Root main.tf — Stable primary, optional HA secondary
 ############################################
+# Assumes data.tf defines:
+#   - data.aws_vpc.sap
+#   - local.azs_with_subnets  (list of AZs that actually have a subnet)
+#   - local.subnet_id_by_az   (map AZ -> subnet id)
+#   - null_resource.assert_two_azs (optional guard ensuring >= 2 AZs)
+############################################
 
 ############################################
 # Auto AZ assignment (no hardcoded values)
 ############################################
 locals {
-  # Stable ordering of the input map keys
   names_sorted = sort(keys(var.instances_to_create))
-
-  # Only AZs that truly have subnets (built in data.tf)
-  _azs = local.azs_with_subnets
+  _azs         = local.azs_with_subnets
 }
 
-# Guard: ensure we actually have at least one AZ (data.tf can add a stricter >=2 guard)
+# Guard: ensure we actually have AZs
 resource "null_resource" "assert_have_azs" {
   lifecycle {
     precondition {
@@ -24,13 +27,13 @@ resource "null_resource" "assert_have_azs" {
 }
 
 locals {
-  # Deterministic base AZ per *primary* name (does not depend on any unknowns)
+  # Deterministic base AZ per *primary* name
   base_az_for_name = {
     for idx, name in local.names_sorted :
     name => local._azs[idx % length(local._azs)]
   }
 
-  # Primary AZ per name with optional explicit override (only if non-empty string)
+  # Primary AZ per name with optional explicit override (only if non-empty)
   primary_az_for_name = {
     for name, cfg in var.instances_to_create :
     name => (
@@ -47,30 +50,21 @@ locals {
     if try(cfg.ha, false)
   }
 
-  # Final AZ per expanded instance key (never null/empty)
+  # Final AZ per expanded instance key
   az_for_instance = merge(
-    # Primaries use the (possibly-overridden) primary_az_for_name
-    {
-      for name, _ in var.instances_to_create :
-      name => local.primary_az_for_name[name]
-    },
-    # Secondaries use next-AZ mapping
+    { for name, _ in var.instances_to_create : name => local.primary_az_for_name[name] },
     local.secondary_az_for_name
   )
 
   # Diagnostics
-  az_blanks = [
-    for k, az in local.az_for_instance : k
-    if !(try(trim(az) != "", false))
-  ]
-
+  az_blanks = [for k, az in local.az_for_instance : k if !(try(trim(az) != "", false))]
   az_without_subnet = [
     for k, az in local.az_for_instance : k
     if try(trim(az) != "", false) && !(contains(keys(local.subnet_id_by_az), az))
   ]
 }
 
-# Guard: make sure every expanded instance ended up with a non-empty AZ
+# Guard: AZ must be non-empty for every expanded instance
 resource "null_resource" "assert_all_instances_have_az" {
   depends_on = [null_resource.assert_have_azs]
   lifecycle {
@@ -81,7 +75,7 @@ resource "null_resource" "assert_all_instances_have_az" {
   }
 }
 
-# Guard: ensure every chosen AZ has a mapped subnet id
+# Guard: each chosen AZ must have a mapped subnet id
 resource "null_resource" "assert_all_instances_have_subnet" {
   lifecycle {
     precondition {
@@ -92,15 +86,8 @@ resource "null_resource" "assert_all_instances_have_subnet" {
 }
 
 ############################################
-# EC2 instances (primary + optional HA secondary)
+# EC2 instances — PRIMARY
 ############################################
-module "ec2_instances" {
-  source   = "./modules/ec2"
-  for_each = var.instances_to_create
-    # we’ll expand HA here to keep keys simple below
-}
-
-# Expand to primary + optional secondary with explicit AZ and subnet selection
 module "ec2_instances_primary" {
   source   = "./modules/ec2"
   for_each = { for name, cfg in var.instances_to_create : name => cfg }
@@ -109,7 +96,7 @@ module "ec2_instances_primary" {
     null_resource.assert_have_azs,
     null_resource.assert_all_instances_have_az,
     null_resource.assert_all_instances_have_subnet,
-    null_resource.assert_two_azs
+    null_resource.assert_two_azs, # remove from this list if you didn’t define it in data.tf
   ]
 
   # Region/VPC
@@ -122,7 +109,7 @@ module "ec2_instances_primary" {
   application_code = each.value.application_code
   application_SID  = each.value.application_SID
 
-  # Placement — use guarded AZ and per-AZ subnet map
+  # Placement
   availability_zone = local.primary_az_for_name[each.key]
   subnet_ID         = local.subnet_id_by_az[local.primary_az_for_name[each.key]]
 
@@ -154,6 +141,9 @@ module "ec2_instances_primary" {
   vip_subnet_selection_mode = try(var.vip_subnet_selection_mode, "unique")
 }
 
+############################################
+# EC2 instances — SECONDARY (HA)
+############################################
 module "ec2_instances_secondary" {
   source = "./modules/ec2"
   for_each = {
@@ -166,7 +156,7 @@ module "ec2_instances_secondary" {
     null_resource.assert_have_azs,
     null_resource.assert_all_instances_have_az,
     null_resource.assert_all_instances_have_subnet,
-    null_resource.assert_two_azs
+    null_resource.assert_two_azs, # remove from this list if you didn’t define it in data.tf
   ]
 
   # Region/VPC
