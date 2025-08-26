@@ -20,8 +20,8 @@ Specify the list of EC2 instances to be created in the corresponding sap.auto.tf
 You only need to specify the EC2 instance type and storage type you want to use with your HANA database. The module will dynamically identify the required EBS storage resources to be created, as per [Storage Configuration for SAP HANA](https://docs.aws.amazon.com/sap/latest/sap-hana/hana-ops-storage-config.html).
 
 ```hcl
-environment = "dev"
-aws_region = "us-east-1"
+#environment = "dev"
+#aws_region = "us-east-1"
 
 instances_to_create = {
     sapd01db1 = {
