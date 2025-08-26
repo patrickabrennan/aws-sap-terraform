@@ -4,6 +4,25 @@
 ############################################
 
 ############################################
+# Add selection of AMI based on AWS Region 
+############################################
+locals {
+  # If provided, this is the default AMI for the current region
+  regional_ami_id = try(var.ami_id_map[var.aws_region], "")
+}
+
+resource "null_resource" "assert_ami_present" {
+  for_each = var.instances_to_create
+  lifecycle {
+    precondition {
+      condition = length(try(each.value.ami_ID, local.regional_ami_id)) > 0
+      error_message = "Missing AMI ID. Provide instances_to_create[\"${each.key}\"].ami_ID \
+or set ami_id_map[\"${var.aws_region}\"] in your tfvars."
+    }
+  }
+}
+
+############################################
 # Auto AZ assignment (no hardcoded values)
 ############################################
 locals {
