@@ -120,7 +120,10 @@ module "ec2_instances_primary" {
 
   # EC2 basics
   #ami_ID        = each.value.ami_ID
-  ami_ID        = try(each.value.ami_ID, local.regional_ami_id)
+  #below was first adjustment 
+  #ami_ID        = try(each.value.ami_ID, local.regional_ami_id)
+  ami_ID = coalesce(try(each.value.ami_ID, null), local.regional_ami_id)
+
   
 instance_type = each.value.instance_type
   key_name      = each.value.key_name
@@ -181,7 +184,10 @@ module "ec2_instances_secondary" {
 
   # EC2 basics
   #ami_ID        = each.value.ami_ID
-  ami_ID        = try(each.value.ami_ID, local.regional_ami_id)
+  #ami_ID        = try(each.value.ami_ID, local.regional_ami_id)
+  ami_ID = coalesce(try(each.value.ami_ID, null), local.regional_ami_id)
+
+
   instance_type = each.value.instance_type
   key_name      = each.value.key_name
   monitoring    = each.value.monitoring
