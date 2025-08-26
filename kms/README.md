@@ -37,7 +37,8 @@ Under ```keys_to_create``` you declare all the keys to be created. We recommend 
 This example assumes you are using the pattern of having one KMS key per service that stores [data at rest](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/protecting-data-at-rest.html). If you are not following this pattern, feel free to give different values for your key names.
 
 
-NOTE: Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The keys_to_create are defined in the dev.auto.tfvars file.
+## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The keys_to_create are defined in the dev.auto.tfvars file.
+
 
 ## Input variables
 
