@@ -24,7 +24,8 @@ instances_to_create = {
         "application_code"  = "hana"
         "application_SID"   = "D01"
         "ha"                = true
-        "ami_ID"            = "ami-01102c5e8ab69fb75" #"ami-0de716d6197524dd9"  #ami-01ee0f5d6dfe22e54"
+        #comment out as it auto selects based on a map with list for each region
+        #"ami_ID"            = "ami-01102c5e8ab69fb75" #"ami-0de716d6197524dd9"  #ami-01ee0f5d6dfe22e54"
         "key_name"          = "sap"
         "monitoring"        = false
         "root_ebs_size"     = 80 
@@ -43,7 +44,8 @@ instances_to_create = {
         "application_code" = "nw"
         "application_SID"  = "D01"
         "ha"               = true
-        "ami_ID"           = "ami-01102c5e8ab69fb75" #  "ami-0de716d6197524dd9"   #"ami-01ee0f5d6dfe22e54"
+        #comment out as it auto selects based on a map with list for each region
+        #"ami_ID"           = "ami-01102c5e8ab69fb75" #  "ami-0de716d6197524dd9"   #"ami-01ee0f5d6dfe22e54"
         "key_name"         = "sap"
         "monitoring"       = false        
         "root_ebs_size"    = 50
@@ -58,7 +60,8 @@ sapd02db1 = {
     "application_code" = "hana"
     "application_SID"  = "D02"
     "ha"               = true
-    "ami_ID"           = "ami-01102c5e8ab69fb75" #"ami-0de716d6197524dd9"
+    #comment out as it auto selects based on a map with list for each region
+    #"ami_ID"           = "ami-01102c5e8ab69fb75" #"ami-0de716d6197524dd9"
     "key_name"         = "sap"
     "monitoring"       = false
     "root_ebs_size"    = 80
