@@ -16,9 +16,10 @@ NOTE: The AMI image unless pulled from the AWS MarketPlace needs to be specified
 3. At each of the woekspaces take a look and update as required at the ```locals.tf``` file (example [kms/locals.tf](https://github.com/patrickabrennan/aws-sap-terraform/blob/main/kms/locals.tf)). These files contain all the tags to be attached to the resources of that configuration. Update them as required.
 4. Continue to section below "How to deploy"
 
+
 ## How to deploy
 
-A script called 'tfc-orchestrate' may be found in this repo. This script requires a user or team token and a variable setting of ‘TFC_TOKEN’. It also requires a ‘TFC_ORG’ variable setting with the name of your TFC Orgization.
+A script called 'tfc-orchestrate' may be found in this repo. This script requires a user or team token and a variable setting of ‘TFC_TOKEN’. It also requires a ‘TFC_ORG’ variable setting with the name of your TFC Orgization. If you want to deploy manually or some other way see below ( Creation sequence) for required deployment order. Below is the apply and destroy commands for the tfc-orchestrate.sh script.
 
 apply command is: 
 
@@ -32,6 +33,7 @@ With the destroy command one needs to confirm when prompted with ‘destroy’.
 
 The script will install as outlined below:
 
+
 ### Creation sequence
 
 | Sequence | Stage | Jobs | Configuration
@@ -44,16 +46,16 @@ The script will install as outlined below:
 |5|iam|iam_plan, iam_apply| [IAM roles and policies](iam/README.md)
 |6|ec2_instance|instances_plan, instances_apply| [EC2 Instances](ec2_instance/README.md)
 
+
 ## HCP Workplace structure 
 
-There's one workjspoace for each type of AWS core resource created by this solution (Network, Amazon EC2 instances, Security Groups, Amazon Elastic File Systems, AWS KMS encryption keys, and AWS IAM permission policies and roles). 
-SAP Landscapes often involve a large number of servers.  
+There's six(6) workspoaces, one for each of the followingL: Network, WS KMS encryption keys, Amazon Elastic File Systems, Security Groups, Security Groups, AWS IAM permission policies and roles, and Amazon EC2 instances.   
 
-Configuration of resources and the corresponding resource modules are all included in this single repository. Certain customers require this structure for audit and compliance purposes. The solution can be changed to have the resource configuration and modules separated into two different repositories. 
 
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
 
 ## License
 
