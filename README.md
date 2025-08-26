@@ -12,9 +12,8 @@ Welcome! Here you will find the required Terraform resources required to deploy 
      b. environment = &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Envronment name you want to use for example dev   
      c. sap_discovery_tag = sap_relevant   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   ### Must be set to sap_relevant ### 
     
-NOTE: The AMI image unless pulled from the AWS MarketPlace needs to be specified in the the [ec2_instance sap.auto.tfvars file](https://github.com/patrickabrennan/aws-sap-terraform/blob/main/ec2_instance/sap.auto.tfvars) to ensure that a valid AMI for each AWS region in the U.S is listed. The Terrafrom code will select the proper one based on the region.
-
-3. At each of the folder take a look and update as required at the ```locals.tf``` file (example [kms/locals.tf](https://github.com/patrickabrennan/aws-sap-terraform/blob/main/kms/locals.tf)). These files contain all the tags to be attached to the resources of that configuration. Update them as required.
+NOTE: The AMI image unless pulled from the AWS MarketPlace needs to be specified in the the [ec2_instance sap.auto.tfvars file](https://github.com/patrickabrennan/aws-sap-terraform/blob/main/ec2_instance/sap.auto.tfvars) on line 14 to 17 for the four(4) AWS U.S Regions (us-eaast-1, us-east-2, us-west-1, us-east-2) to ensure that a valid AMI for each AWS region in the U.S is listed. The Terrafrom code will select the proper one based on the region being used as defined in the Variable Set for the project.
+3. At each of the woekspaces take a look and update as required at the ```locals.tf``` file (example [kms/locals.tf](https://github.com/patrickabrennan/aws-sap-terraform/blob/main/kms/locals.tf)). These files contain all the tags to be attached to the resources of that configuration. Update them as required.
 4. Continue to section below "How to deploy"
 
 ## How to deploy
