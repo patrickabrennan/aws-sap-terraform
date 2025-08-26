@@ -10,7 +10,7 @@ Welcome! Here you will find the required Terraform resources required to deploy 
    
      a. aws_region = AWS Region you want to use for example us-east-1   
      b. environment = Envronment name for example dev   
-     c. sap_discovery_tag = sap_relevant   &nbsp;&nbsp;   ### Must be set to sap_relevant ### 
+     c. sap_discovery_tag = sap_relevant   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   ### Must be set to sap_relevant ### 
     
 NOTE: The AMI image unless pulled from the AWS MarketPlace needs to be specified in the the [ec2_instance sap.auto.tfvars file](https://github.com/patrickabrennan/aws-sap-terraform/ec2_instance/sap.auto.tfvars) to ensure that a valid AMI for each AWS region in the U.S is listed. The Terrafrom code will select the proper one based on the region.
 
