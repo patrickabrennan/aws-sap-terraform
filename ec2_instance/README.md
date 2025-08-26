@@ -11,7 +11,7 @@ Resource types created with this configuration:
 
 ## Usage
 
-Specify the list of EC2 instances to be created in the corresponding ENV.tfvars file following the example below. Check the detailed description for each variable in the section below. For SAP HANA databases, EC2 instances can be specified to be created with ***standard HANA storage configuration*** or ***custom HANA storage configuration***
+Specify the list of EC2 instances to be created in the corresponding sap.auto.tfvars file following the example below. Check the detailed description for each variable in the section below. For SAP HANA databases, EC2 instances can be specified to be created with ***standard HANA storage configuration*** or ***custom HANA storage configuration***
 
 ## Examples
 
@@ -25,13 +25,13 @@ aws_region = "us-east-1"
 
 instances_to_create = {
     sapd01db1 = {
-        "private_ip"        = "10.237.40.144"
+        #"private_ip"        = "10.237.40.144"
         "domain"            = "mylab.com"        
         "application_code"  = "hana"
         "application_SID"   = "D01"
         "ha"                = false     
-        "ami_ID"            = "ami-12345678901234567"
-        "subnet_ID"         = "subnet-12345678901234567"
+        #"ami_ID"            = "ami-12345678901234567"
+        #"subnet_ID"         = "subnet-12345678901234567"
         "key_name"          = "mycmk"
         "monitoring"        = true
         "root_ebs_size"     = 80 
@@ -46,13 +46,13 @@ instances_to_create = {
     }
 
     sapd01cs = {
-        "private_ip"       = "10.237.40.145"
+        #"private_ip"       = "10.237.40.145"
         "domain"           = "mylab.com"        
         "application_code" = "nw"
         "application_SID"  = "D01"
         "ha"               = false            
-        "ami_ID"           = "ami-12345678901234567"
-        "subnet_ID"        = "subnet-12345678901234567"
+        #"ami_ID"           = "ami-12345678901234567"
+        #"subnet_ID"        = "subnet-12345678901234567"
         "key_name"         = "mycmk"
         "monitoring"        = true        
         "root_ebs_size"    = 50
@@ -69,18 +69,18 @@ instances_to_create = {
 You specify the EC2 instance type and a detailed custom EBS configuration for your HANA database. The ec2module will create the EBS resources as per your specification.
 
 ```hcl
-environment = "dev"
-aws_region = "us-east-1"
+#environment = "dev"
+#aws_region = "us-east-1"
 
 instances_to_create = {
     sapd02db1 = {
-        "private_ip"        = "10.237.40.146"
+        #"private_ip"        = "10.237.40.146"
         "domain"            = "mylab.com"        
         "application_code"  = "hana"
         "application_SID"   = "D02"
         "ha"                = true     
-        "ami_ID"            = "ami-12345678901234567"
-        "subnet_ID"         = "subnet-12345678901234567"
+        #"ami_ID"            = "ami-12345678901234567"
+        #"subnet_ID"         = "subnet-12345678901234567"
         "key_name"          = "mycmk"
         "monitoring"        = true
         "root_ebs_size"     = 80 
