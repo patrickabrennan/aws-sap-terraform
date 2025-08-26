@@ -134,8 +134,8 @@ instances_to_create = {
 
 ## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The following are not required as they are determined automatically:
 ```hcl
-## - public IP
-## - subnet_id
+private_ip
+subnet_ID
 ```
 ## When ha = true the primary nodes are put in one subnet and all the secondaries are put in anther subnet. The subnet ID's are determined automatcially.
 
