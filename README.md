@@ -8,10 +8,10 @@ Welcome! Here you will find the required Terraform resources required to deploy 
 1. Fork this repository [aws-sap-terraform](https://github.com/patrickabrennan/aws-sap-terraform) into your own account. [How to fork?](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
 2. While you are welcome to navigate through the folders in the specific order: netwrok, kms, efs, securitygroups, iam, ec2_instance and **fill in the files named "sap.auto.tfvars" in each folder** according to what your environment requires the only things you should have to define is a variable set for a the HCP Project you will be putting the 6 workspaces in - I recommend a name of sap. The variavbles to use in the variable set are:
    
-     a. aws_region = <AWS Region you want to use for example us-east-1>
-     b. environment = <Envronment name for example dev>
+     a. aws_region = <AWS Region you want to use for example us-east-1>   
+     b. environment = <Envronment name for example dev>   
      c. sap_discovery_tag = sap_relevant   ### Must be set to sap_relevant ### 
-  
+    
 NOTE: The AMI image unless pulled from the AWS MarketPlace needs to be specified in the the [ec2_instance sap.auto.tfvars file](https://github.com/patrickabrennan/aws-sap-terraform/ec2_instance/sap.auto.tfvars) to ensure that a valid AMI for each AWS region in the U.S is listed. The Terrafrom code will select the proper one based on the region.
 
 3. At each of the folder take a look and update as required at the ```locals.tf``` file (example [kms/locals.tf](https://github.com/patrickabrennan/aws-sap-terraform/blob/main/kms/locals.tf)). These files contain all the tags to be attached to the resources of that configuration. Update them as required.
