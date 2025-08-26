@@ -114,8 +114,10 @@ module "ec2_instances_primary" {
   ha          = try(each.value.ha, false)
 
   # EC2 basics
-  ami_ID        = each.value.ami_ID
-  instance_type = each.value.instance_type
+  #ami_ID        = each.value.ami_ID
+  ami_ID        = try(each.value.ami_ID, local.regional_ami_id)
+  
+instance_type = each.value.instance_type
   key_name      = each.value.key_name
   monitoring    = each.value.monitoring
   root_ebs_size = tostring(each.value.root_ebs_size)
@@ -173,7 +175,8 @@ module "ec2_instances_secondary" {
   ha          = true
 
   # EC2 basics
-  ami_ID        = each.value.ami_ID
+  #ami_ID        = each.value.ami_ID
+  ami_ID        = try(each.value.ami_ID, local.regional_ami_id)
   instance_type = each.value.instance_type
   key_name      = each.value.key_name
   monitoring    = each.value.monitoring
