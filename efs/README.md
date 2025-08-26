@@ -12,15 +12,11 @@ Resource types created with this configuration:
 
 ## Usage
 
-Specify the list of EFS File Systems to be created in the corresponding ENV.tfvars file following the example below. Check the detailed description for each variable in the section below.
+Specify the list of EFS File Systems to be created in the corresponding sap.auto.tfvars file following the example below. Check the detailed description for each variable in the section below.
 
 ## Examples
 
 ```hcl
-environment       = "dev"
-aws_region        = "us-east-1"
-sap_discovery_tag = "sap_relevant"
-
 efs_to_create = {
   "D01-sapmnt" = {
     access_point_info = {
@@ -42,6 +38,10 @@ efs_to_create = {
 ```
 
 Under ```efs_to_create``` you declare all the file systems to be created.
+
+
+
+## Regarding the input variables below, this repo defines environment, aws_region, and sap_discovery_tag in the project variable set as they are needed in other workspaces. 
 
 ## Input variables
 
