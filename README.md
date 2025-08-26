@@ -49,7 +49,7 @@ The script will install as outlined below:
 
 ## HCP Workplace structure 
 
-There's six(6) workspoaces, one for each of the followingL: Network, WS KMS encryption keys, Amazon Elastic File Systems, Security Groups, Security Groups, AWS IAM permission policies and roles, and Amazon EC2 instances.   
+There's six(6) workspoaces, one for each of the followingL: Network, KMS encryption keys, Amazon Elastic File Systems, Security Groups, AWS IAM permission policies and roles, and Amazon EC2 instances.   
 
 
 ## Security
