@@ -9,13 +9,13 @@ Resource types created with this configuration:
 
 ## Usage: IAM Policies
 
-Specify the IAM Policies to be created in the corresponding ENV.tfvars file following the example below. Check the detailed description for each variable in the subsequent sections below.
+Specify the IAM Policies to be created in the corresponding sap.auto.tfvars file following the example below. Check the detailed description for each variable in the subsequent sections below.
 
-For better pipeline automation, there are cases where IAM Policies may have to reference ARNs of resources created by other parts of this solution. In that case, it is not possible to dynamically declare these references in the ENV.tfvars file. These dynamic references are handled separately in the locals.tf, there is no need to declare these policy statetements under ENV.tfvars and hardcode lists of EFS Arn(s), KMS Arn(s), etc created in the previous steps of the pipeline.
+For better pipeline automation, there are cases where IAM Policies may have to reference ARNs of resources created by other parts of this solution. In that case, it is not possible to dynamically declare these references in the sap.auto.tfvars file. These dynamic references are handled separately in the locals.tf.
 
 ### Example - IAM Policy
 
-The ENV.tfvars file will be used for declaring the static Permission Policy statements: 
+The sap.auto.tfvars file will be used for declaring the static Permission Policy statements: 
 
 ```hcl
 iam_policies = {
@@ -51,15 +51,12 @@ Be noted that policy name (defined by "name") is configured to be the same in th
 
 ## Usage: IAM Roles
 
-Specify the IAM Roles to be created in the corresponding ENV.tfvars file following the example below. Here you also specify what IAM Policies will be part of the IAM Role. Check the detailed description for each variable in the sections below.
+Specify the IAM Roles to be created in the corresponding sap.auto.tfvars file following the example below. Here you also specify what IAM Policies will be part of the IAM Role. Check the detailed description for each variable in the sections below.
 
 
 ### Example - IAM Role
 
 ```hcl
-environment = "dev"
-aws_region  = "us-east-1"
-
 iam_roles = {
   role1 = {
     name = "iam-role-sap-ec2"
@@ -94,6 +91,10 @@ iam_roles = {
 
 Under ```iam_roles``` you declare all the roles to be created. Check the detailed description for each key pair value in the sections below.
 </br></br>
+
+
+## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The iam_roles and iam_policies are defined in the sap.auto.tfvars file.
+
 
 ## Input variables
 
