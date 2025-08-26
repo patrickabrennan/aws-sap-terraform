@@ -77,6 +77,16 @@ variable "subnet_selection_mode" {
 }
 
 ########################################
+# Add selection of AMI_ID based on AWS Region 
+########################################
+variable "ami_id_map" {
+  description = "Static map of region -> AMI ID. If set, instances without ami_ID will use ami_id_map[var.aws_region]."
+  type        = map(string)
+  default     = {}
+}
+
+
+########################################
 # VIP ENI/EIP + VIP subnet hints
 ########################################
 variable "enable_vip_eni" {
