@@ -2,7 +2,6 @@
 
 Welcome! Here you will find the required Terraform resources required to deploy a base SAP environment, comprised of Networtk, KMS keys, EFS, Security Groups, IAM and EC2 Instances.
 
-//Find the full guidance on how to use this code on [the official blog post](https://aws.amazon.com/blogs/awsforsap/terraform-your-sap-infrastructure-on-aws-2/)
 
 ## Getting started
 
