@@ -7,7 +7,7 @@ Resource types created with this configuration:
 #* [VPC](https://https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc)
 #* [Subnet](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet)
 #* [Internet Gateway](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway)
-#* [Route Table]https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table()
+#* [Route Table](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table)
 
 ## Usage
 
