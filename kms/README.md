@@ -36,6 +36,9 @@ Under ```keys_to_create``` you declare all the keys to be created. We recommend 
 
 This example assumes you are using the pattern of having one KMS key per service that stores [data at rest](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/protecting-data-at-rest.html). If you are not following this pattern, feel free to give different values for your key names.
 
+
+NOTE: Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The keys_to_create are defined in the dev.auto.tfvars file.
+
 ## Input variables
 
 | Name | Description | Example | Required |
@@ -44,7 +47,6 @@ This example assumes you are using the pattern of having one KMS key per service
 |aws_region|Region where resources are being deployed|us-east-1|Yes
 |keys_to_create|Map of keys to be created|Key-value map. The key (examples above are "ebs", "efs", "cloudwatch" and "s3") will be used as the KMS key name. See below for details|Yes
 
-NOTE: The environment and aws_region are in this repo defined as variables so it pulls the value as specified in the project variable set. The keys_to_create to create are defined in the dev.auto.tfvars file. 
 
 ### ```keys_to_create``` variable details
 | Name | Description | Example | Required |
