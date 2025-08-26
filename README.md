@@ -21,7 +21,7 @@ NOTE: The AMI image unless pulled from the AWS MarketPlace needs to be specified
 
 A script called 'tfc-orchestrate' may be found in this repo. This script requires a user or team token and a variable setting of ‘TFC_TOKEN’. It also requires a ‘TFC_ORG’ variable setting with the name of your TFC Orgization. If you want to deploy manually or some other way see below ( Creation sequence) for required deployment order. Below is the apply and destroy commands for the tfc-orchestrate.sh script.
 
-NOTE: Make it executable or run bash ./tfc-orchestrate.sh { apply, destroy } 
+NOTE: Make it executable or run 'bash ./tfc-orchestrate.sh { apply, destroy }'  
 
 apply command is: 
 
