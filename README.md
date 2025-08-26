@@ -41,12 +41,12 @@ The script will apply the workspaces as outlined below and when detroying it wil
 | Sequence | Stage | Jobs | Configuration
 |------|-------|-----|-----
 
-|1|  network  |  kms_plan, kms_apply  | [Network](network/README.md)  
-|2|  kms  |  kms_plan, kms_apply  | [KMS](kms/README.md)  
-|3|  efs  |  efs_plan, efs_apply  | [EFS](efs/README.md)  
-|4|  security_group  |  security_group_plan, security_group_apply  | [Security Groups](security_group/README.md)  
-|5|  iam  |  iam_plan, iam_apply  | [IAM roles and policies](iam/README.md)  
-|6|  ec2_instance|  instances_plan, instances_apply  | [EC2 Instances](ec2_instance/README.md)  
+|1|  network|kms_plan, kms_apply|[Network](network/README.md)  
+|2|  kms|kms_plan, kms_apply|[KMS](kms/README.md)  
+|3|  efs|efs_plan, efs_apply|[EFS](efs/README.md)  
+|4|  security_group|security_group_plan, security_group_apply|[Security Groups](security_group/README.md)  
+|5|  iam  |iam_plan, iam_apply|[IAM roles and policies](iam/README.md)  
+|6|  ec2_instance|instances_plan, instances_apply|[EC2 Instances](ec2_instance/README.md)  
 
 
 ## HCP Workplace structure 
