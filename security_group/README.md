@@ -9,7 +9,7 @@ Resource types created with this configuration:
 
 ## Usage
 
-Specify the list of Security Groups to be created in the corresponding ENV.tfvars file (refer to [Branching strategy](../README.md)). Also, you can use the field "efs_to_allow" to reference the security groups automatically created by the [EFS](../efs/README.md) module.
+Specify the list of Security Groups to be created in the corresponding sap.tfvars file. One can use the field "efs_to_allow" to reference the security groups automatically created by the [EFS](../efs/README.md) module.
 
 ## Examples
 
@@ -95,12 +95,13 @@ rules = {
 }
 ```
 
+## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The app_sg_list and db_sg_list are defined in the sap.auto.tfvars file. Also note that the vpc_id is picked up automatically so one does not need to specifiy it.
+
 ## Input variables
 | Name | Description | Example | Required |
 |------|-------------|--------|--------|
 |environment|Environment name|dev|Yes
 |aws_region|Region where resources are being deployed|us-east-1|Yes
-|vpc_id|VPC ID to create the security group in|vpc-1234|Yes
 |app_sg_list|Key-value map. The key (examples above are "app1", and "db1") will be used as the security group name. See below for details|See below|Yes
 |db_sg_list|Key-value map. The key (examples above are "app1", and "db1") will be used as the security group name. See below for details|See below|Yes
 
