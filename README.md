@@ -39,12 +39,12 @@ The script will install as outlined below:
 | Sequence | Stage | Jobs | Configuration
 |------|-------|-----|-----
 
-|1|network|kms_plan, kms_apply| [Network](network/README.md)
-|2|kms|kms_plan, kms_apply| [KMS](kms/README.md)
-|3|efs|efs_plan, efsS_apply| [EFS](efs/README.md)
-|4|securitygroups|security_groups_plan, security_groups_apply| [Security Groups](security_group/README.md)
-|5|iam|iam_plan, iam_apply| [IAM roles and policies](iam/README.md)
-|6|ec2_instance|instances_plan, instances_apply| [EC2 Instances](ec2_instance/README.md)
+|1|network|kms_plan, kms_apply| [Network](network/README.md)  
+|2|kms|kms_plan, kms_apply| [KMS](kms/README.md)  
+|3|efs|efs_plan, efsS_apply| [EFS](efs/README.md)  
+|4|securitygroups|security_groups_plan, security_groups_apply| [Security Groups](security_group/README.md)  
+|5|iam|iam_plan, iam_apply| [IAM roles and policies](iam/README.md)  
+|6|ec2_instance|instances_plan, instances_apply| [EC2 Instances](ec2_instance/README.md)  
 
 
 ## HCP Workplace structure 
