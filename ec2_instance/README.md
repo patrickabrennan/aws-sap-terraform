@@ -20,18 +20,12 @@ Specify the list of EC2 instances to be created in the corresponding sap.auto.tf
 You only need to specify the EC2 instance type and storage type you want to use with your HANA database. The module will dynamically identify the required EBS storage resources to be created, as per [Storage Configuration for SAP HANA](https://docs.aws.amazon.com/sap/latest/sap-hana/hana-ops-storage-config.html).
 
 ```hcl
-#environment = "dev"
-#aws_region = "us-east-1"
-
 instances_to_create = {
     sapd01db1 = {
-        #"private_ip"        = "10.237.40.144"
         "domain"            = "mylab.com"        
         "application_code"  = "hana"
         "application_SID"   = "D01"
         "ha"                = false     
-        #"ami_ID"            = "ami-12345678901234567"
-        #"subnet_ID"         = "subnet-12345678901234567"
         "key_name"          = "mycmk"
         "monitoring"        = true
         "root_ebs_size"     = 80 
@@ -46,13 +40,10 @@ instances_to_create = {
     }
 
     sapd01cs = {
-        #"private_ip"       = "10.237.40.145"
         "domain"           = "mylab.com"        
         "application_code" = "nw"
         "application_SID"  = "D01"
         "ha"               = false            
-        #"ami_ID"           = "ami-12345678901234567"
-        #"subnet_ID"        = "subnet-12345678901234567"
         "key_name"         = "mycmk"
         "monitoring"        = true        
         "root_ebs_size"    = 50
@@ -69,18 +60,12 @@ instances_to_create = {
 You specify the EC2 instance type and a detailed custom EBS configuration for your HANA database. The ec2module will create the EBS resources as per your specification.
 
 ```hcl
-#environment = "dev"
-#aws_region = "us-east-1"
-
 instances_to_create = {
     sapd02db1 = {
-        #"private_ip"        = "10.237.40.146"
         "domain"            = "mylab.com"        
         "application_code"  = "hana"
         "application_SID"   = "D02"
         "ha"                = true     
-        #"ami_ID"            = "ami-12345678901234567"
-        #"subnet_ID"         = "subnet-12345678901234567"
         "key_name"          = "mycmk"
         "monitoring"        = true
         "root_ebs_size"     = 80 
