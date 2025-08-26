@@ -146,25 +146,36 @@ instances_to_create = {
 }
 ```
 
+
+## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The following are not required as they are determined automatically:
+## - public IP
+## - subnet_id
+
+## When ha = true the primary nodes are put in one subnet and all the secondaries are put in anther subnet. The subnet ID's are determined automatcially.
+
+## The following inputs are defind in the sap.auto.tfvars file. 
+
+
 ## Input variables
 
 | Name | Description | Example | Required |
 |------|-------------|--------|--------|
-|instance_type|EC2 instance type to be created|x2iedn.4xlarge|Yes
-|hana_data_storage_type|EBS storage type to be used for HANA data volumes|gp3|Yes
-|hana_logs_storage_type|EBS storage type to be used for HANA log volumes|gp3|Yes
-|hana_shared_storage_type|EBS storage type to be used for HANA shared volumes|gp3|Yes
-|hana_backup_storage_type|EBS storage type to be used for HANA backup volume|st1|Yes
-|private_ip|IP of SAP EC2 instance|10.237.40.144|No (if not specified, an IP will be dynamically assigned)
+|ami_id_map|list of 4 valid ami_id, one for for each AWS U.S. Region |us-east-1 = "ami-086ecd7a7c7733550"|Yes
 |domain|Domain EC2 instance needs to be configured with |mycorp.com|Yes
 |application_code|Identifies the type of EC2 instance (use "hana" for SAP HANA, use "nw" for SAP NetWeaver Application Servers.|hana|Yes
 |application_SID|SAP system SID |D01|Yes
 |ha|Determines if instance will be part of a High Availability cluster. If it's true, will create the instance with an IAM role with broader permissions, required for HA. If it's false, the permissions given are narrower |true|Yes
-|ami_ID|AMI ID to be used for instance creation |ami-01ee0f5d6dfe22e54|Yes
 |key_name|Name of KMS CMK alias for EBS encryption |mycmk|Yes
 |monitoring|If set to true, enables detailed monitoring |false|Yes
 |root_ebs_size|Size of root EBS volume (in GiBs) |80|Yes
 |ec2_tags|Key value map with EC2 tags common to all SAP instances | { "app"= "SAP", "cost_center"= "12345" } |No
+|instance_type|EC2 instance type to be created|x2iedn.4xlarge|Yes
+|hana_data_storage_type|EBS storage type to be used for HANA data volumes|gp3|Yes
+|hana_logs_storage_type|EBS storage type to be used for HANA log volumes|gp3|Yes
+|hana_backup_storage_type|EBS storage type to be used for HANA backup volume|st1|Yes
+|hana_shared_storage_type|EBS storage type to be used for HANA shared volumes|gp3|Yes
+
+
 
 ## Parameters in AWS Systems Manager Parameter Store updated by this configuration
 
