@@ -10,7 +10,7 @@ Resource types created with this configuration:
 
 ## Usage
 
-Specify the list of KMS Keys to be created in the corresponding ENV.tfvars file following the example below. Check the detailed description for each variable in the section below.
+Specify the list of KMS Keys to be created in the corresponding sap.auto.tfvars file following the example below. Check the detailed description for each variable in the section below.
 
 ## Dynamic configurations
 
@@ -43,6 +43,8 @@ This example assumes you are using the pattern of having one KMS key per service
 |environment|Environment name|dev|Yes
 |aws_region|Region where resources are being deployed|us-east-1|Yes
 |keys_to_create|Map of keys to be created|Key-value map. The key (examples above are "ebs", "efs", "cloudwatch" and "s3") will be used as the KMS key name. See below for details|Yes
+
+NOTE: The environment and aws_region are in this repo defined as variables so it pulls the value as specified in the project variable set. The keys_to_create to create are defined in the dev.auto.tfvars file. 
 
 ### ```keys_to_create``` variable details
 | Name | Description | Example | Required |
