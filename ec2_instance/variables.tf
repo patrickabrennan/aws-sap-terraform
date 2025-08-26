@@ -170,7 +170,9 @@ variable "instances_to_create" {
     domain           = string
     application_code = string
     application_SID  = string
-    ami_ID           = string
+    #comment out ami_id and make optional 
+    #ami_ID           = string
+    ami_ID           = optional(string)
     key_name         = string
     monitoring       = bool
     root_ebs_size    = number
