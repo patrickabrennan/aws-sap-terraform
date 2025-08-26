@@ -33,7 +33,7 @@ Destroy command is:
 
 With the destroy command one needs to confirm when prompted with ‘destroy’.
 
-The script will install as outlined below:
+The script will apply the workspaces as outlined below and when detroying it will do it in the reverse order:
 
 
 ### Creation sequence
