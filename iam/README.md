@@ -46,7 +46,7 @@ iam_policies = {
 As shown above, under ```iam_policies``` you declare all the IAM Policies to be created. Check the detailed description for each key pair value in the sections below.
 
 
-Be noted that policy name (defined by "name") is configured to be the same in the ENV.tfvars (static permission policies) and locals.tf (dynamic permission policies). This will result in the permission policies from both files to be merged under a single policy during deployment. In order for the statements from one file not to override the other, the statement identificator should be different (for example, statement ID "stmt1" shown in the above sample policy, should not conflict with any statement IDs in locals.tf)
+Be noted that policy name (defined by "name") is configured to be the same in the sap.auto.tfvars (static permission policies) and locals.tf (dynamic permission policies). This will result in the permission policies from both files to be merged under a single policy during deployment. In order for the statements from one file not to override the other, the statement identificator should be different (for example, statement ID "stmt1" shown in the above sample policy, should not conflict with any statement IDs in locals.tf)
 
 
 ## Usage: IAM Roles
