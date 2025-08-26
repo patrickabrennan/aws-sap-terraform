@@ -41,7 +41,7 @@ Under ```efs_to_create``` you declare all the file systems to be created.
 
 
 
-## Regarding the input variables below, this repo defines environment, aws_region, and sap_discovery_tag in the project variable set as they are needed in other workspaces. The efs_to_create are defined in the dev.auto.tfvars file.
+## Regarding the input variables below, this repo defines environment, aws_region, and sap_discovery_tag in the project variable set as they are needed in other workspaces. The efs_to_create are defined in the sap.auto.tfvars file.
 
 ## Input variables
 
