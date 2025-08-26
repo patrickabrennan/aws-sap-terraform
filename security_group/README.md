@@ -95,7 +95,7 @@ rules = {
 }
 ```
 
-## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The app_sg_list and db_sg_list are defined in the sap.auto.tfvars file. Also note that the vpc_id is picked up automatically so one does not need to specifiy it.
+## Regarding the input variables below, this repo defines environment and aws_region in the project variable set as they are needed in other workspaces. The app_sg_list and db_sg_list are defined in the sap.auto.tfvars file.
 
 ## Input variables
 | Name | Description | Example | Required |
