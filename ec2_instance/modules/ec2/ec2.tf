@@ -125,7 +125,7 @@ resource "aws_instance" "this" {
     }
   }
 
-New tag block 8/28/2025
+#New tag block 8/28/2025
 # Common tags for all volumes (root + data).
 # (Name is set here for all volumes to avoid separate tag resources.)
 volume_tags = merge(
@@ -177,6 +177,8 @@ OLD TG BLOCK 8/28/2029 cooment out
   ]
 }
 
+#comment out on 8/28/205
+/*
 # ---- Per-volume Name tags ----
 
 # Tag ROOT as "<hostname>-root"
@@ -200,6 +202,7 @@ resource "aws_ec2_tag" "data_names" {
 
   depends_on  = [aws_instance.this]
 }
+*/
 
 
 
