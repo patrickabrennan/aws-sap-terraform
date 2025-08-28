@@ -140,7 +140,7 @@ volume_tags = merge(
 
 
 
-OLD TG BLOCK 8/28/2029 cooment out
+#OLD TG BLOCK 8/28/2029 cooment out
 #Common tags for all volumes (root + data). Name is set per-volume below.
 #  volume_tags = merge(
 #    var.ec2_tags,
