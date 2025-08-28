@@ -125,15 +125,31 @@ resource "aws_instance" "this" {
     }
   }
 
-  # Common tags for all volumes (root + data). Name is set per-volume below.
-  volume_tags = merge(
-    var.ec2_tags,
-    {
-      Environment = var.environment
-      Application = var.application_code
-      Hostname    = var.hostname
-    }
-  )
+New tag block 8/28/2025
+# Common tags for all volumes (root + data).
+# (Name is set here for all volumes to avoid separate tag resources.)
+volume_tags = merge(
+  var.ec2_tags,
+  {
+    Environment = var.environment
+    Application = var.application_code
+    Hostname    = var.hostname
+    Name        = var.hostname
+  }
+)
+
+
+
+OLD TG BLOCK 8/28/2029 cooment out
+#Common tags for all volumes (root + data). Name is set per-volume below.
+#  volume_tags = merge(
+#    var.ec2_tags,
+#    {
+#      Environment = var.environment
+#      Application = var.application_code
+#      Hostname    = var.hostname
+#    }
+#  )
 
   tags = merge(var.ec2_tags, {
     Name         = var.hostname
