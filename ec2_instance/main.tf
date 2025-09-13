@@ -4,13 +4,26 @@
 ############################################
 
 ############################################
-# Add selection of AMI based on AWS Region 
+# AMI selection (automatic per-region via SSM) 
 ############################################
-locals {
-  # default AMI for the current region (or null if not set)
-  regional_ami_id = try(var.ami_id_map[var.aws_region], null)
+# AWS publishes the latest AMI IDs per Region under well-known SSM parameters.
+# You can override `ami_ssm_parameter_name` or set `ami_id_map` if needed.
+data "aws_ssm_parameter" "ami_family" {
+  # Default is AL2023 x86_64; set to ARM or AL2 if desired
+  name = var.ami_ssm_parameter_name
 }
 
+#modified thie on 9/13/2025 for automatic ami selection 
+locals {
+  # default AMI for the current region (or null if not set)
+  #regional_ami_id = try(var.ami_id_map[var.aws_region], null)
+  # 1) Try SSM family for this region
+  # 2) Fallback to static map for this region
+  regional_ami_id = try(data.aws_ssm_parameter.ami_family.value, try(var.ami_id_map[var.aws_region], null))
+ }
+}
+
+#modified thie on 9/13/2025 for automatic ami selection 
 resource "null_resource" "assert_ami_present" {
   for_each = var.instances_to_create
 
@@ -19,7 +32,9 @@ resource "null_resource" "assert_ami_present" {
       # if both are null, coalesce() errors; try(...) catches it and gives ""
       condition = length(try(coalesce(each.value.ami_ID, local.regional_ami_id), "")) > 0
       error_message = <<-EOT
-      Missing AMI ID. Provide instances_to_create["${each.key}"].ami_ID
+      #Missing AMI ID. Provide instances_to_create["${each.key}"].ami_ID
+      Missing AMI ID. Provide instances_to_create["${each.key}"].ami_ID,
+      or define ami_ssm_parameter_name (SSM family),
       or set ami_id_map["${var.aws_region}"] in your tfvars.
       EOT
     }
