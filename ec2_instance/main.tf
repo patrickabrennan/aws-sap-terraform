@@ -20,7 +20,6 @@ locals {
   # 1) Try SSM family for this region
   # 2) Fallback to static map for this region
   regional_ami_id = try(data.aws_ssm_parameter.ami_family.value, try(var.ami_id_map[var.aws_region], null))
- }
 }
 
 #modified thie on 9/13/2025 for automatic ami selection 
