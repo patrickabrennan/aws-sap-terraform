@@ -79,6 +79,15 @@ variable "subnet_selection_mode" {
 ########################################
 # Add selection of AMI_ID based on AWS Region 
 ########################################
+#added 9/13/2025 - Auto ami selection 
+variable "ami_ssm_parameter_name" {
+  description = "SSM parameter path for the AMI family to use (region-aware). Defaults to Amazon Linux 2023 x86_64."
+  type        = string
+  default     = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+}
+#end added 9/13/2025 - Auto ami selection
+
+
 variable "ami_id_map" {
   description = "Static map of region -> AMI ID. If set, instances without ami_ID will use ami_id_map[var.aws_region]."
   type        = map(string)
