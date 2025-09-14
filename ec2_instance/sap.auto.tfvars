@@ -11,10 +11,11 @@ vpc_name = "sap_vpc"
 
 #add ami selection 8/26/2025
 ami_id_map = {
-  us-east-1 = "ami-086ecd7a7c7733550"
-  us-east-2 = "ami-0ddbd8137fedb189f"
-  us-west-1 = "ami-0de5d904a60f5429a"
-  us-west-2 = "ami-023f0eb2e8be9e162"
+  #Patrick Brennan's Images 
+  #us-east-1 = "ami-086ecd7a7c7733550"
+  #us-east-2 = "ami-0ddbd8137fedb189f"
+  #us-west-1 = "ami-0de5d904a60f5429a"
+  #us-west-2 = "ami-023f0eb2e8be9e162"
 }
 
 enable_vip_eni = true
