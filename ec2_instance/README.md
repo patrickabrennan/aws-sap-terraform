@@ -11,7 +11,9 @@ Resource types created with this configuration:
 
 ## Usage
 
-Specify the list of EC2 instances to be created in the corresponding sap.auto.tfvars file following the example below. Check the detailed description for each variable in the section below. For SAP HANA databases, EC2 instances can be specified to be created with ***standard HANA storage configuration*** or ***custom HANA storage configuration***
+Two ways exist for determing the AMI: 1) Specify the list of AMI's to use per region in the corresponding sap.auto.tfvars file following the example below or 2) if a list of AMI in the list is not specified in the sap.auto.tfvars file it automatically determine the AMI to use for that rewgion - it will pick the Amazon Linux for that region. 
+
+Check the detailed description for each variable in the section below. For SAP HANA databases, EC2 instances can be specified to be created with ***standard HANA storage configuration*** or ***custom HANA storage configuration***
 
 ## Examples
 
